@@ -50,7 +50,22 @@ int main (int argc, char *argv[])
     }
 
     // Make a list of pointer to the nodes
-    node *frequencies_pnt[256] = {0};
+    node **frequencies_pnt = malloc(sizeof(node*) * 256);
+
+    // Initialize everything
+    for (int i = 0; i < 256; i++)
+    {
+        frequencies_pnt[i] = NULL;
+    }
+
+    for (int i = 0; i < 256; i++)
+    {
+        if (frequencies[i] > 0)
+        {
+            frequencies_pnt[i] = create_node((unsigned char) i, frequencies[i]);
+        }
+    }
+
 
     for (int i = 0; i < 256; i++)
     {
@@ -76,46 +91,52 @@ int main (int argc, char *argv[])
     free(buffer);
 }
 
-pair find_two_smallest(node *f_pnt[256])
+pair find_two_smallest(node **f_pnt)
 {
     pair final;
-    final.seconde = f_pnt[0]->letter;
+    for (int i = 0; i < 256; i++)
+    {
+        if (f_pnt[i] != NULL)
+        {
+            // Put initial value
+            final.seconde = f_pnt[i]->letter;
+        }
+    }
     int isfirst = 0;
     int small;
     int smaller;
 
     for (int i = 0; i < 256; i++)
     {
-        if (f_pnt[i]->repetition > 0)
+        if (f_pnt[i] != NULL)
         {
-            printf("bigger than 0\n");
-            if (isfirst == 0)
+            if (f_pnt[i]->repetition > 0)
             {
-                printf("first\n");
-                // Put the value
-                smaller = f_pnt[i]->repetition;
-                final.first = f_pnt[i]->letter;
-                isfirst++;
-            }
-
-            else if (isfirst == 1)
-            {
-                if (f_pnt[i]->repetition < smaller)
+                if (isfirst == 0)
                 {
-                    printf("swap\n");
-                    small = smaller;
+                    // Put the value
                     smaller = f_pnt[i]->repetition;
-
-                    final.seconde = final.first;
                     final.first = f_pnt[i]->letter;
+                    isfirst++;
                 }
 
-                else if ((f_pnt[i]->repetition > smaller) && (f_pnt[i]->repetition < small))
+                else if (isfirst == 1)
                 {
-                    printf("finded small\n");
-                    small = f_pnt[i]->repetition;
+                    if (f_pnt[i]->repetition < smaller)
+                    {
+                        small = smaller;
+                        smaller = f_pnt[i]->repetition;
 
-                    final.seconde = f_pnt[i]->letter;
+                        final.seconde = final.first;
+                        final.first = f_pnt[i]->letter;
+                    }
+
+                    else if ((f_pnt[i]->repetition > smaller) && (f_pnt[i]->repetition < small))
+                    {
+                        small = f_pnt[i]->repetition;
+
+                        final.seconde = f_pnt[i]->letter;
+                    }
                 }
             }
         }
@@ -140,9 +161,9 @@ pair find_two_smallest(node *f_pnt[256])
                 }
             }
         }
-
-        return final;
     }
+
+    return final;
 }
 
 // Build Huffman tree from frequency table
