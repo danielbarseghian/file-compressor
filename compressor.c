@@ -12,12 +12,22 @@ typedef struct node
 
 typedef struct pair
 {
-    char first;
-    char seconde;
+    node *first;
+    node *seconde;
 } pair;
+
+typedef struct list
+{
+    char *letter;
+    int repetition;
+    struct list *next;
+} list;
 
 node *create_node(char c, int freq);
 pair find_two_smallest(node *f_pnt[256]);
+node *build_huffman(node **arr, node **f_pnt);
+
+int node_count = 0;
 
 int main (int argc, char *argv[])
 {
@@ -49,6 +59,8 @@ int main (int argc, char *argv[])
         frequencies[(unsigned char) buffer[i]]++;
     }
 
+    free(buffer);
+
     // Make a list of pointer to the nodes
     node **frequencies_pnt = malloc(sizeof(node*) * 256);
 
@@ -63,32 +75,90 @@ int main (int argc, char *argv[])
         if (frequencies[i] > 0)
         {
             frequencies_pnt[i] = create_node((unsigned char) i, frequencies[i]);
+            node_count++;
         }
     }
 
+    node **node_arr = malloc(sizeof(node*) * node_count);
 
-    for (int i = 0; i < 256; i++)
+    for (int i = 0, put = 0; put <= 4; i++)
     {
-        if (frequencies[i] > 0)
+        if (frequencies_pnt[i] != NULL)
         {
-            frequencies_pnt[i] = create_node((unsigned char) i, frequencies[i]);
+            node_arr[put] = frequencies_pnt[i];
+            put++;
         }
     }
 
-    for (int i = 0; i < 256; i++)
+    for (int i = 0; i < node_count; i++)
     {
-        if (frequencies[i] > 0)
+        printf("%c: %i || ", node_arr[i]->letter, node_arr[i]->repetition);
+    }
+    printf("\n");
+    
+    node *t = build_huffman(node_arr, frequencies_pnt);
+}
+
+// Build a huffman tree and return the top element
+node *build_huffman(node **arr, node **f_pnt)
+{
+    // Find the two smallest ones
+    pair values = find_two_smallest(f_pnt);
+
+    // Get the old names
+    char *f_old = values.first->letter;
+    char *s_old = values.seconde->letter;
+
+    // Get the new name
+    const unsigned int LEN = (strlen(f_old) + strlen(s_old));
+    char *new_name = malloc(sizeof(char) * LEN);
+
+    // Get the sum of thoses two values
+    int sum = values.first->repetition + values.seconde->repetition;
+
+    // Create a new node
+    node *parent = malloc(sizeof(node));
+
+    // Point to thoses parents
+    parent->right = values.first;
+    parent->left = values.seconde;
+
+    int f_value = 0;
+    int s_value = 0;
+    int f_found = 0;
+    int s_found = 0;
+
+    // Find the letter corresponding to the arr
+    for (int i = 0; i < node_count; i++)
+    {
+        // Get the first one
+        if ((arr[i]->letter == values.first->letter) && (f_found == 0))
         {
-            printf("%c, %i\n", frequencies_pnt[i]->letter, frequencies_pnt[i]->repetition);
+            f_value = i;
+            f_found++;
+        }
+
+        if ((arr[i]->letter == values.seconde->letter) && (s_found == 0))
+        {
+            s_value = i;
+            s_found++;
         }
     }
     
-    // Find the two smallest ones
-    pair values = find_two_smallest(frequencies_pnt);
+    // Remove from the list
+    free(s_value);
+    arr[s_value] = NULL;
 
-    printf("%c %c\n", values.first, values.seconde);
+    // I've intentionally not freed the first one so i can replace values not create a new node
 
-    free(buffer);
+    // I need a new list only with the values and each time something goes i
+    // left it NULL and i repeat until only one value is not NULL
+
+    // Put the first value as our new value
+    arr[f_value]->left = NULL;
+    arr[f_value]->right = NULL;
+    arr[f_value]->repetition = sum;
+    arr[f_value]->letter = new_name;
 }
 
 pair find_two_smallest(node **f_pnt)
@@ -99,7 +169,7 @@ pair find_two_smallest(node **f_pnt)
         if (f_pnt[i] != NULL)
         {
             // Put initial value
-            final.seconde = f_pnt[i]->letter;
+            final.seconde = f_pnt[i];
         }
     }
     int isfirst = 0;
@@ -116,7 +186,7 @@ pair find_two_smallest(node **f_pnt)
                 {
                     // Put the value
                     smaller = f_pnt[i]->repetition;
-                    final.first = f_pnt[i]->letter;
+                    final.first = f_pnt[i];
                     isfirst++;
                 }
 
@@ -128,14 +198,14 @@ pair find_two_smallest(node **f_pnt)
                         smaller = f_pnt[i]->repetition;
 
                         final.seconde = final.first;
-                        final.first = f_pnt[i]->letter;
+                        final.first = f_pnt[i];
                     }
 
-                    else if ((f_pnt[i]->repetition > smaller) && (f_pnt[i]->repetition < small))
+                    else if (((f_pnt[i]->repetition > smaller) && (f_pnt[i]->repetition < small)) || (f_pnt[i]->repetition == smaller) || (f_pnt[i]->repetition != small))
                     {
                         small = f_pnt[i]->repetition;
 
-                        final.seconde = f_pnt[i]->letter;
+                        final.seconde = f_pnt[i];
                     }
                 }
             }
@@ -147,14 +217,14 @@ pair find_two_smallest(node **f_pnt)
             {
                 if ((f_pnt[i]->repetition > small) && (f_pnt[i]->repetition < smaller))
                 {
-                    final.seconde = f_pnt[i]->letter;
+                    final.seconde = f_pnt[i];
                     small = f_pnt[i]->repetition;
                 }
                 else if (f_pnt[i]->repetition < smaller)
                 {
                     // Swap them
                     final.seconde = final.first;
-                    final.first = f_pnt[i]->letter;
+                    final.first = f_pnt[i];
 
                     small = smaller;
                     smaller = f_pnt[i]->repetition;
