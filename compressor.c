@@ -25,7 +25,8 @@ typedef struct list
 
 node *create_node(char c, int freq);
 pair find_two_smallest(node *f_pnt[256]);
-node *build_huffman(node **arr, node **f_pnt);
+node *build_huffman(node **arr);
+void build_codes(node *root, char *buffer, int depth, char **codes);
 
 int node_count = 0;
 
@@ -58,8 +59,6 @@ int main (int argc, char *argv[])
     {
         frequencies[(unsigned char) buffer[i]]++;
     }
-
-    free(buffer);
 
     // Make a list of pointer to the nodes
     node **frequencies_pnt = malloc(sizeof(node*) * 256);
@@ -96,116 +95,177 @@ int main (int argc, char *argv[])
     }
     printf("\n");
     
-    node *t = build_huffman(node_arr, frequencies_pnt);
+    node *t = build_huffman(node_arr);
+
+    char *bfr = malloc(sizeof(char) * node_count);
+    int depth = 0;
+    char **codes = malloc(256 * sizeof(char *));
+    for (int i = 0; i < 256; i++)
+        codes[i] = NULL;
+
+    build_codes(t, bfr, depth, codes);
+    printf("a: %s\n", codes['a']);
+    printf("b: %s\n", codes['b']);
+
+    free(buffer);
+}
+
+void build_codes(node *root, char *buffer, int depth, char **codes)
+{
+    if (!root) return;
+
+    // LEAF
+    if (root->left == NULL && root->right == NULL)
+    {
+        buffer[depth] = '\0';  // 🔥 CRITICAL FIX
+        codes[(unsigned char)root->letter] = strdup(buffer);
+        return;
+    }
+
+    // LEFT = 0
+    if (root->left)
+    {
+        buffer[depth] = '0';
+        build_codes(root->left, buffer, depth + 1, codes);
+    }
+
+    // RIGHT = 1
+    if (root->right)
+    {
+        buffer[depth] = '1';
+        build_codes(root->right, buffer, depth + 1, codes);
+    }
 }
 
 // Build a huffman tree and return the top element
-node *build_huffman(node **arr, node **f_pnt)
+node *build_huffman(node **arr)
 {
-    // Find the two smallest ones
-    pair values = find_two_smallest(f_pnt);
+    node *parent = NULL;
 
-    // Get the old names
-    char *f_old = values.first->letter;
-    char *s_old = values.seconde->letter;
-
-    // Get the new name
-    const unsigned int LEN = (strlen(f_old) + strlen(s_old));
-    char *new_name = malloc(sizeof(char) * LEN);
-
-    // Get the sum of thoses two values
-    int sum = values.first->repetition + values.seconde->repetition;
-
-    // Create a new node
-    node *parent = malloc(sizeof(node));
-
-    // Point to thoses parents
-    parent->right = values.first;
-    parent->left = values.seconde;
-
-    int f_value = 0;
-    int s_value = 0;
-    int f_found = 0;
-    int s_found = 0;
-
-    // Find the letter corresponding to the arr
     for (int i = 0; i < node_count; i++)
     {
-        // Get the first one
-        if ((arr[i]->letter == values.first->letter) && (f_found == 0))
-        {
-            f_value = i;
-            f_found++;
-        }
+        // Find the two smallest ones
+        pair values = find_two_smallest(arr);
 
-        if ((arr[i]->letter == values.seconde->letter) && (s_found == 0))
+        if (arr[i] != NULL)
         {
-            s_value = i;
-            s_found++;
+            // Get the sum of thoses two values
+            int sum = values.first->repetition + values.seconde->repetition;
+
+            // Create a new node
+            parent = malloc(sizeof(node));
+
+            // Point to thoses parents
+            parent->right = values.first;
+            parent->left = values.seconde;
+
+            // Put the sum
+            parent->repetition = sum;
+            parent->letter = '\0';
+
+            int f_value = 0;
+            int s_value = 0;
+            int f_found = 0;
+            int s_found = 0;
+
+            // Find the letter corresponding to the arr
+            for (int j = 0; j < node_count; j++)
+            {
+                // Get the first one
+                if ((arr[j] == values.first) && (f_found == 0))
+                {
+                    f_value = j;
+                    f_found++;
+                }
+
+                if ((arr[j] == values.seconde) && (s_found == 0))
+                {
+                    s_value = j;
+                    s_found++;
+                }
+            }
+            
+            // make this one null
+            arr[s_value] = NULL;
+
+            // And put the sum on the other
+            arr[f_value] = parent;
+
+            printf("MERGED: %c + %c -> freq %d\n",
+            values.first->letter,
+            values.seconde->letter,
+            parent->repetition);
+        }   
+    }
+
+    // Only one node should be here
+    int null_count = 0;
+    int parent_index = 0;
+    for (int i = 0; i < node_count; i++)
+    {
+        if (arr[i] == NULL)
+        {
+            null_count++;
+        }
+        else 
+        {
+            parent_index = i;
         }
     }
+
+    if (null_count == (node_count - 1))
+    {
+        return arr[parent_index];
+    }
     
-    // Remove from the list
-    free(s_value);
-    arr[s_value] = NULL;
-
-    // I've intentionally not freed the first one so i can replace values not create a new node
-
-    // I need a new list only with the values and each time something goes i
-    // left it NULL and i repeat until only one value is not NULL
-
-    // Put the first value as our new value
-    arr[f_value]->left = NULL;
-    arr[f_value]->right = NULL;
-    arr[f_value]->repetition = sum;
-    arr[f_value]->letter = new_name;
+    return NULL;
 }
 
-pair find_two_smallest(node **f_pnt)
+pair find_two_smallest(node **arr)
 {
     pair final;
-    for (int i = 0; i < 256; i++)
+    for (int i = 0; i < node_count; i++)
     {
-        if (f_pnt[i] != NULL)
+        if (arr[i] != NULL)
         {
             // Put initial value
-            final.seconde = f_pnt[i];
+            final.seconde = arr[i];
         }
     }
     int isfirst = 0;
     int small;
     int smaller;
 
-    for (int i = 0; i < 256; i++)
+    for (int i = 0; i < node_count; i++)
     {
-        if (f_pnt[i] != NULL)
+        if (arr[i] != NULL)
         {
-            if (f_pnt[i]->repetition > 0)
+            if (arr[i]->repetition > 0)
             {
                 if (isfirst == 0)
                 {
                     // Put the value
-                    smaller = f_pnt[i]->repetition;
-                    final.first = f_pnt[i];
+                    smaller = arr[i]->repetition;
+                    final.first = arr[i];
                     isfirst++;
                 }
 
                 else if (isfirst == 1)
                 {
-                    if (f_pnt[i]->repetition < smaller)
+                    if (arr[i]->repetition < smaller)
                     {
                         small = smaller;
-                        smaller = f_pnt[i]->repetition;
+                        smaller = arr[i]->repetition;
 
                         final.seconde = final.first;
-                        final.first = f_pnt[i];
+                        final.first = arr[i];
                     }
 
-                    else if (((f_pnt[i]->repetition > smaller) && (f_pnt[i]->repetition < small)) || (f_pnt[i]->repetition == smaller) || (f_pnt[i]->repetition != small))
+                    else if (((arr[i]->repetition > smaller) && (arr[i]->repetition < small)) || (arr[i]->repetition == smaller) || (arr[i]->repetition != small))
                     {
-                        small = f_pnt[i]->repetition;
+                        small = arr[i]->repetition;
 
-                        final.seconde = f_pnt[i];
+                        final.seconde = arr[i];
                     }
                 }
             }
@@ -213,21 +273,21 @@ pair find_two_smallest(node **f_pnt)
         // Putting else if not else if ever there is a problem and the value is bigger we don't want to risk anything
         else if (isfirst == 3)
         { 
-            if (f_pnt[i]->repetition < smaller)
+            if (arr[i]->repetition < smaller)
             {
-                if ((f_pnt[i]->repetition > small) && (f_pnt[i]->repetition < smaller))
+                if ((arr[i]->repetition > small) && (arr[i]->repetition < smaller))
                 {
-                    final.seconde = f_pnt[i];
-                    small = f_pnt[i]->repetition;
+                    final.seconde = arr[i];
+                    small = arr[i]->repetition;
                 }
-                else if (f_pnt[i]->repetition < smaller)
+                else if (arr[i]->repetition < smaller)
                 {
                     // Swap them
                     final.seconde = final.first;
-                    final.first = f_pnt[i];
+                    final.first = arr[i];
 
                     small = smaller;
-                    smaller = f_pnt[i]->repetition;
+                    smaller = arr[i]->repetition;
                 }
             }
         }
