@@ -27,6 +27,7 @@ node *create_node(char c, int freq);
 pair find_two_smallest(node *f_pnt[256]);
 node *build_huffman(node **arr);
 void build_codes(node *root, char *buffer, int depth, char **codes);
+void write_file(char **new_arr, int LEN, char *name);
 
 int node_count = 0;
 
@@ -43,8 +44,19 @@ int main (int argc, char *argv[])
 
     // Read file
     FILE *f = fopen(argv[1], "r");
+    if (f == NULL)
+    {
+        printf("Error: Could not open file %s\n", argv[1]);
+        return 1;
+    }
     fseek(f, 0, SEEK_END);
     long fsize = ftell(f);
+    if (fsize == 0)
+    {
+        printf("File is empty!\n");
+        fclose(f);
+        return 0;
+    }
     fseek(f, 0, SEEK_SET);  // same as rewind(f)
 
     char *buffer = malloc(fsize + 1);
@@ -80,7 +92,7 @@ int main (int argc, char *argv[])
 
     node **node_arr = malloc(sizeof(node*) * node_count);
 
-    for (int i = 0, put = 0; put <= 4; i++)
+    for (int i = 0, put = 0; i < 256 && put < node_count; i++)
     {
         if (frequencies_pnt[i] != NULL)
         {
@@ -89,25 +101,71 @@ int main (int argc, char *argv[])
         }
     }
 
+    free(frequencies_pnt);
+
+    printf("haha\n");
     for (int i = 0; i < node_count; i++)
     {
+        printf("putting %d, %i\n", node_arr[i]->letter, node_arr[i]->repetition);
         printf("%c: %i || ", node_arr[i]->letter, node_arr[i]->repetition);
     }
     printf("\n");
     
     node *t = build_huffman(node_arr);
 
+    // Free the array
+    free(node_arr);
+
     char *bfr = malloc(sizeof(char) * node_count);
     int depth = 0;
-    char **codes = malloc(256 * sizeof(char *));
-    for (int i = 0; i < 256; i++)
-        codes[i] = NULL;
+    char **codes = calloc(256, sizeof(char *));
 
     build_codes(t, bfr, depth, codes);
-    printf("a: %s\n", codes['a']);
-    printf("b: %s\n", codes['b']);
+
+    FILE *out = fopen(argv[2], "w");
+    const int LEN = strlen(buffer);
+    char *new_arr[LEN];
+
+    for (int i = 0; i < LEN; i++)
+    {
+        printf("Writting: %s, %c\n", codes[buffer[i]], buffer[i]);
+        new_arr[i] = codes[buffer[i]];
+    }
+    write_file(new_arr, LEN, argv[2]);
 
     free(buffer);
+}
+
+void write_file(char **new_arr, int LEN, char *name)
+{
+    // Get len of 8 bit things we can make
+    const int BYTELEN = printf("%i\n", LEN / 8);
+    const int BITLEN = printf("%i\n", LEN % 8);
+
+    // Loop over and write every byte
+    for (int i = 1; i < BYTELEN; i++) 
+    {
+        // Put all bits into a byte string
+        char *byte = calloc(9, sizeof(char));
+
+        // Loop 8 times until i can get a full byte
+        const int BYTELEN = 0;
+        for (int j = 0; j < BYTELEN; j++)
+        {
+            strcat(byte, new_arr[j]);
+        }
+        FILE *fptr = fopen(name, "w");
+
+        fwrite(byte, 1, 1, fptr);
+
+        free(byte);
+    }
+
+    // write the remaining bits
+    for (int i = 0; i < BITLEN; i++)
+    {
+
+    }
 }
 
 void build_codes(node *root, char *buffer, int depth, char **codes)
@@ -117,7 +175,7 @@ void build_codes(node *root, char *buffer, int depth, char **codes)
     // LEAF
     if (root->left == NULL && root->right == NULL)
     {
-        buffer[depth] = '\0';  // 🔥 CRITICAL FIX
+        buffer[depth] = '\0';  // CRITICAL FIX
         codes[(unsigned char)root->letter] = strdup(buffer);
         return;
     }
@@ -125,14 +183,14 @@ void build_codes(node *root, char *buffer, int depth, char **codes)
     // LEFT = 0
     if (root->left)
     {
-        buffer[depth] = '0';
+        buffer[depth] = '1';
         build_codes(root->left, buffer, depth + 1, codes);
     }
 
     // RIGHT = 1
     if (root->right)
     {
-        buffer[depth] = '1';
+        buffer[depth] = '0';
         build_codes(root->right, buffer, depth + 1, codes);
     }
 }
