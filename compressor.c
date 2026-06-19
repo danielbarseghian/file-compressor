@@ -101,13 +101,15 @@ int main (int argc, char *argv[])
         }
     }
 
-    free(frequencies_pnt);
+    node **cpy_arr = malloc(sizeof(node*) * node_count);
 
     for (int i = 0; i < node_count; i++)
     {
-        printf("%c: %i || ", node_arr[i]->letter, node_arr[i]->repetition);
+        cpy_arr[i] = malloc(sizeof(node));
+        *cpy_arr[i] = *node_arr[i];
     }
-    printf("\n");
+
+    free(frequencies_pnt);
     
     node *t = build_huffman(node_arr);
     if (t == NULL)
@@ -117,9 +119,6 @@ int main (int argc, char *argv[])
     }
 
     char *b = malloc(sizeof(char) * 20);
-    
-
-    
 
     char *bfr = malloc(sizeof(char) * node_count);
     if (bfr == NULL)
@@ -144,25 +143,35 @@ int main (int argc, char *argv[])
 
     for (int i = 0; i < LEN; i++)
     {
-        printf("Writting: %s, %c\n", codes[buffer[i]], buffer[i]);
         new_arr[i] = codes[buffer[i]];
     }
-    write_file(new_arr, LEN, argv[2], node_arr);
+    write_file(new_arr, LEN, argv[2], cpy_arr);
 
     // Free the array
     free(node_arr);
 
     // Free the buffer
     free(buffer);
+
+    printf("Successful\n");
 }
 
 void write_file(char **new_arr, int LEN, char *name, node **node_arr)
 {
     FILE *f = fopen(name, "wb");
-    if (!f)
+    if (f == NULL)
         return;
 
     // Put metadata
+    
+    for (int i = 0; i < node_count; i++)
+    {
+        char temp[20];
+
+        snprintf(temp, 20, "%c:%i|", node_arr[i]->letter, node_arr[i]->repetition);
+
+        fwrite(temp, 1, strlen(temp), f);
+    }
 
     unsigned char byte = 0;
     int bit_count = 0;
@@ -239,7 +248,6 @@ node *build_huffman(node **arr)
 
         if (arr[i] != NULL)
         {
-            printf("first %i, seconde %i\n", values.first->repetition, values.seconde->repetition);
             // Get the sum of thoses two values
             sum = values.first->repetition + values.seconde->repetition;
 
@@ -282,11 +290,6 @@ node *build_huffman(node **arr)
 
             // And put the sum on the other
             arr[f_value] = parent;
-
-            printf("MERGED: %c + %c -> freq %d\n",
-            values.first->letter,
-            values.seconde->letter,
-            parent->repetition);
         }   
     }
 
@@ -302,7 +305,6 @@ node *build_huffman(node **arr)
         }
         else 
         {
-            printf("puting parent_index\n");
             parent_index = i;
         }
     }
