@@ -27,8 +27,7 @@ node *create_node(char c, int freq);
 pair find_two_smallest(node *f_pnt[256]);
 node *build_huffman(node **arr);
 void build_codes(node *root, char *buffer, int depth, char **codes);
-void write_file(char **new_arr, int LEN, char *name);
-void print_tree(node *code, char *buffer);
+void write_file(char **new_arr, int LEN, char *name, node **node_arr);
 
 int node_count = 0;
 
@@ -110,50 +109,34 @@ int main (int argc, char *argv[])
     }
     printf("\n");
     
-    printf("building\n");
     node *t = build_huffman(node_arr);
-    printf("stopped building\n");
+    if (t == NULL)
+    {
+        printf("error while building tree\n");
+        return 1;
+    }
 
     char *b = malloc(sizeof(char) * 20);
-
-    if (t->left != NULL)
-    {
-        print_tree(t->left, b);
-    }
-    else
-    {
-        printf("failed\n");
-    }
-
-    if (t->right != NULL)
-    {
-        print_tree(t->right, b);
-    }
-    else
-    {
-        printf("failed\n");
-    }
     
 
-    // Free the array
-    free(node_arr);
+    
 
     char *bfr = malloc(sizeof(char) * node_count);
+    if (bfr == NULL)
+    {
+        printf("error while malloc\n");
+        return 1;
+    }
+
     int depth = 0;
     char **codes = calloc(256, sizeof(char *));
+    if (codes == NULL)
+    {
+        printf("error while calloc\n");
+        return 1;
+    }
 
     build_codes(t, bfr, depth, codes);
-
-    // print codes
-    for (int i = 0; i < 256; i++)
-    {
-        printf("a");
-        if (codes[i] != NULL)
-        {
-            printf("%s", codes[i]);
-        }
-    }
-    printf("\n");
 
     FILE *out = fopen(argv[2], "w");
     const int LEN = strlen(buffer);
@@ -164,73 +147,55 @@ int main (int argc, char *argv[])
         printf("Writting: %s, %c\n", codes[buffer[i]], buffer[i]);
         new_arr[i] = codes[buffer[i]];
     }
-    write_file(new_arr, LEN, argv[2]);
+    write_file(new_arr, LEN, argv[2], node_arr);
 
+    // Free the array
+    free(node_arr);
+
+    // Free the buffer
     free(buffer);
 }
 
-void print_tree(node *code, char *buffer)
+void write_file(char **new_arr, int LEN, char *name, node **node_arr)
 {
-    printf("%c\n", code->letter);
-
-    if (code->left != NULL)
-    {
-        strcat(buffer, "0");
-        print_tree(code->left, buffer);
-    }
-
-    if (code->right != NULL)
-    {
-        strcat(buffer, "1");
-        print_tree(code->right, buffer);
-    }
-}
-
-void write_file(char **new_arr, int LEN, char *name)
-{
-    // Get len of 8 bit things we can make
-    const int BYTELEN = LEN / 8;
-    const int BITLEN = LEN % 8;
-    int buffer = 0;
-
-    FILE *fptr = fopen(name, "w");
-    if (fptr == NULL)
-    {
+    FILE *f = fopen(name, "wb");
+    if (!f)
         return;
-    }
 
-    // Loop over and write every byte
-    for (int i = 1; i < BYTELEN; i++) 
+    // Put metadata
+
+    unsigned char byte = 0;
+    int bit_count = 0;
+
+    for (int i = 0; i < LEN; i++)
     {
-        // Put all bits into a byte string
-        char *byte = calloc(9, sizeof(char));
-
-        // Loop 8 times until i can get a full byte
-        for (int j = 0; j < BYTELEN; j++, buffer++)
+        for (int j = 0; new_arr[i][j] != '\0'; j++)
         {
-            strcat(byte, new_arr[buffer + j]);
+            byte <<= 1;
+
+            if (new_arr[i][j] == '1')
+                byte |= 1;
+
+            bit_count++;
+
+            if (bit_count == 8)
+            {
+                fwrite(&byte, 1, 1, f);
+
+                byte = 0;
+                bit_count = 0;
+            }
         }
-
-        printf("%s\n", byte);
-        fwrite(byte, 1, 1, fptr);
-
-        free(byte);
     }
 
-    
-    // Check if not empty
-    char *bit = calloc(BITLEN, sizeof(char) + 1);
-
-    for (int i = 0; i < BITLEN; i++, buffer++)
+    if (bit_count > 0)
     {
-        strcat(bit, new_arr[buffer + i]);
+        byte <<= (8 - bit_count);
+
+        fwrite(&byte, 1, 1, f);
     }
 
-    if (bit[0] != '\n')
-    {
-        printf("%s\n", bit);
-        fwrite(bit, 1, 1, fptr);
-    }
+    fclose(f);
 }
 
 void build_codes(node *root, char *buffer, int depth, char **codes)
@@ -267,16 +232,20 @@ node *build_huffman(node **arr)
 
     for (int i = 0; i < node_count; i++)
     {
+        int sum = 0;
+
         // Find the two smallest ones
         pair values = find_two_smallest(arr);
 
         if (arr[i] != NULL)
         {
+            printf("first %i, seconde %i\n", values.first->repetition, values.seconde->repetition);
             // Get the sum of thoses two values
-            int sum = values.first->repetition + values.seconde->repetition;
+            sum = values.first->repetition + values.seconde->repetition;
 
             // Create a new node
             parent = malloc(sizeof(node));
+            parent->repetition = 0;
 
             // Point to thoses parents
             parent->right = values.first;
@@ -324,6 +293,7 @@ node *build_huffman(node **arr)
     // Only one node should be here
     int null_count = 0;
     int parent_index = 0;
+
     for (int i = 0; i < node_count; i++)
     {
         if (arr[i] == NULL)
@@ -332,6 +302,7 @@ node *build_huffman(node **arr)
         }
         else 
         {
+            printf("puting parent_index\n");
             parent_index = i;
         }
     }
@@ -390,6 +361,8 @@ pair find_two_smallest(node **arr)
 
                         final.seconde = arr[i];
                     }
+
+                    isfirst++;
                 }
             }
         }
@@ -411,6 +384,12 @@ pair find_two_smallest(node **arr)
 
                     small = smaller;
                     smaller = arr[i]->repetition;
+                }
+
+                else if ((arr[i]->repetition == smaller) && (arr[i]->repetition != small))
+                {
+                    final.seconde = arr[i];
+                    small = arr[i]->repetition;
                 }
             }
         }
