@@ -214,6 +214,7 @@ void write_file(char **new_arr, int LEN, char *name, node **node_arr)
 
         fwrite(temp, 1, strlen(temp), f);
     }
+    fwrite("\n", 1, 1, f);
 
     unsigned char byte = 0;
     int bit_count = 0;
