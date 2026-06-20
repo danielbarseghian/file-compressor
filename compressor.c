@@ -28,11 +28,15 @@ pair find_two_smallest(node *f_pnt[256]);
 node *build_huffman(node **arr);
 void build_codes(node *root, char *buffer, int depth, char **codes);
 void write_file(char **new_arr, int LEN, char *name, node **node_arr);
+void free_arr(node *arr);
+void free_tree(node *t);
 
 int node_count = 0;
 
 int main (int argc, char *argv[])
 {
+    fflush(stdout);
+    
     // Create an array of frequencies and initialize it to 0
     int frequencies[256] = {0};
 
@@ -108,17 +112,14 @@ int main (int argc, char *argv[])
         cpy_arr[i] = malloc(sizeof(node));
         *cpy_arr[i] = *node_arr[i];
     }
-
-    free(frequencies_pnt);
     
     node *t = build_huffman(node_arr);
+
     if (t == NULL)
     {
         printf("error while building tree\n");
         return 1;
     }
-
-    char *b = malloc(sizeof(char) * 20);
 
     char *bfr = malloc(sizeof(char) * node_count);
     if (bfr == NULL)
@@ -137,7 +138,6 @@ int main (int argc, char *argv[])
 
     build_codes(t, bfr, depth, codes);
 
-    FILE *out = fopen(argv[2], "w");
     const int LEN = strlen(buffer);
     char *new_arr[LEN];
 
@@ -147,13 +147,55 @@ int main (int argc, char *argv[])
     }
     write_file(new_arr, LEN, argv[2], cpy_arr);
 
-    // Free the array
-    free(node_arr);
+    for (int i = 0; i < node_count; i++)
+    {
+        free_arr(cpy_arr[i]);
+    }
 
-    // Free the buffer
+    free(bfr);
+    free_tree(t);
+    for (int i = 0; i < 256; i++)
+    {
+        free(codes[i]);
+    }
+    free(codes);
     free(buffer);
+    free(frequencies_pnt);
+    free(node_arr);
+    free(cpy_arr);
 
     printf("Successful\n");
+}
+
+void free_tree(node *t)
+{
+    if (t == NULL)
+        return;
+
+    if (t->left)
+        free_tree(t->left);
+
+    if (t->right)
+        free_tree(t->right);
+
+    free(t);
+}
+
+void free_arr(node *arr)
+{
+    if (arr->left != NULL)
+    {
+        free_arr(arr->left);
+    }
+
+    if (arr->right != NULL)
+    {
+        free_arr(arr->right);
+    }
+
+
+    printf("freeing %c\n", arr->letter);
+    free(arr);
 }
 
 void write_file(char **new_arr, int LEN, char *name, node **node_arr)
@@ -237,81 +279,56 @@ void build_codes(node *root, char *buffer, int depth, char **codes)
 // Build a huffman tree and return the top element
 node *build_huffman(node **arr)
 {
-    node *parent = NULL;
-
-    for (int i = 0; i < node_count; i++)
+    while (1)
     {
-        int sum = 0;
-
-        // Find the two smallest ones
+        // Find the two smallest ones globally
         pair values = find_two_smallest(arr);
 
-        if (arr[i] != NULL)
+        // If there is no second node, the tree is fully built
+        if (values.seconde == NULL)
         {
-            // Get the sum of thoses two values
-            sum = values.first->repetition + values.seconde->repetition;
+            break; 
+        }
 
-            // Create a new node
-            parent = malloc(sizeof(node));
-            parent->repetition = 0;
+        printf("adding up %c and %c\n", values.first->letter, values.seconde->letter);
+        
+        int sum = values.first->repetition + values.seconde->repetition;
 
-            // Point to thoses parents
-            parent->right = values.first;
-            parent->left = values.seconde;
+        // Create a new parent node
+        node *parent = malloc(sizeof(node));
+        parent->repetition = sum;
+        parent->letter = '\0';
+        parent->right = values.first;
+        parent->left = values.seconde;
 
-            // Put the sum
-            parent->repetition = sum;
-            parent->letter = '\0';
+        int f_value = -1;
+        int s_value = -1;
 
-            int f_value = 0;
-            int s_value = 0;
-            int f_found = 0;
-            int s_found = 0;
-
-            // Find the letter corresponding to the arr
-            for (int j = 0; j < node_count; j++)
+        // Find the matching indices in the array to update them
+        for (int j = 0; j < node_count; j++)
+        {
+            if (arr[j] == values.first && f_value == -1)
             {
-                // Get the first one
-                if ((arr[j] == values.first) && (f_found == 0))
-                {
-                    f_value = j;
-                    f_found++;
-                }
-
-                if ((arr[j] == values.seconde) && (s_found == 0))
-                {
-                    s_value = j;
-                    s_found++;
-                }
+                f_value = j;
             }
-            
-            // make this one null
-            arr[s_value] = NULL;
-
-            // And put the sum on the other
-            arr[f_value] = parent;
-        }   
+            if (arr[j] == values.seconde && s_value == -1)
+            {
+                s_value = j;
+            }
+        }
+        
+        // Remove the second node and replace the first one with the parent
+        arr[s_value] = NULL;
+        arr[f_value] = parent;
     }
 
-    // Only one node should be here
-    int null_count = 0;
-    int parent_index = 0;
-
+    // Find and return the single remaining root node
     for (int i = 0; i < node_count; i++)
     {
-        if (arr[i] == NULL)
+        if (arr[i] != NULL)
         {
-            null_count++;
+            return arr[i];
         }
-        else 
-        {
-            parent_index = i;
-        }
-    }
-
-    if (null_count == (node_count - 1))
-    {
-        return arr[parent_index];
     }
     
     return NULL;
@@ -319,85 +336,33 @@ node *build_huffman(node **arr)
 
 pair find_two_smallest(node **arr)
 {
-    pair final;
-    for (int i = 0; i < node_count; i++)
-    {
-        if (arr[i] != NULL)
-        {
-            // Put initial value
-            final.seconde = arr[i];
-        }
-    }
-    int isfirst = 0;
-    int small;
-    int smaller;
+    pair results;
+    
+    results.first = NULL;
+    results.seconde = NULL;
 
     for (int i = 0; i < node_count; i++)
     {
-        if (arr[i] != NULL)
+        // Check for null
+        if (arr[i] == NULL)
         {
-            if (arr[i]->repetition > 0)
-            {
-                if (isfirst == 0)
-                {
-                    // Put the value
-                    smaller = arr[i]->repetition;
-                    final.first = arr[i];
-                    isfirst++;
-                }
-
-                else if (isfirst == 1)
-                {
-                    if (arr[i]->repetition < smaller)
-                    {
-                        small = smaller;
-                        smaller = arr[i]->repetition;
-
-                        final.seconde = final.first;
-                        final.first = arr[i];
-                    }
-
-                    else if (((arr[i]->repetition > smaller) && (arr[i]->repetition < small)) || (arr[i]->repetition == smaller) || (arr[i]->repetition != small))
-                    {
-                        small = arr[i]->repetition;
-
-                        final.seconde = arr[i];
-                    }
-
-                    isfirst++;
-                }
-            }
+            continue;
         }
-        // Putting else if not else if ever there is a problem and the value is bigger we don't want to risk anything
-        else if (isfirst == 3)
-        { 
-            if (arr[i]->repetition < smaller)
-            {
-                if ((arr[i]->repetition > small) && (arr[i]->repetition < smaller))
-                {
-                    final.seconde = arr[i];
-                    small = arr[i]->repetition;
-                }
-                else if (arr[i]->repetition < smaller)
-                {
-                    // Swap them
-                    final.seconde = final.first;
-                    final.first = arr[i];
 
-                    small = smaller;
-                    smaller = arr[i]->repetition;
-                }
+        if (results.first == NULL || arr[i]->repetition < results.first->repetition)
+        {
+            // Swap them and put value
+            results.seconde = results.first;
+            results.first = arr[i];
+        }
 
-                else if ((arr[i]->repetition == smaller) && (arr[i]->repetition != small))
-                {
-                    final.seconde = arr[i];
-                    small = arr[i]->repetition;
-                }
-            }
+        else if (results.seconde == NULL || arr[i]->repetition < results.seconde->repetition)
+        {
+            results.seconde = arr[i];
         }
     }
 
-    return final;
+    return results;
 }
 
 // Build Huffman tree from frequency table
