@@ -1,2 +1,6 @@
-test.txt
-output.txt
+.vscode
+compressor
+decompressor
+launch.json
+tasks.json
+*.txt

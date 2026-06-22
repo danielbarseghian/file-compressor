@@ -3,11 +3,24 @@
 #include <ctype.h>
 #include <string.h>
 
+typedef struct list
+{
+    char letter;
+    int repetition;
+    struct list *next;
+} list;
+
+int count = 0;
+
+void free_list(list *first);
+void initialize_list(list *l);
+void print_all(list *l);
+
 int main(int argc, char **argv)
 {
     if (argc != 3)
     {
-        printf("Usage: ./decinoressor compressed output\n");
+        printf("Usage: ./decompressor compressed decompressed\n");
         return 1;
     }
 
@@ -15,28 +28,90 @@ int main(int argc, char **argv)
     FILE *f = fopen(argv[1], "r");
     if (f == NULL)
     {
-        printf("Error while opening compressed filen\n");
+        printf("Error while opening compressed file\n");
         return 1;
     }
 
-    int c;
-    char *buffer = malloc(sizeof(char) * 256);
+    // Put it in a char of size of one byte
+    const int BYTELEN = 8;
+    char *buffer = malloc(sizeof(char) * BYTELEN);
+
+    int doend = 0;
+
+    // Create an array
+    list *metadata = malloc(sizeof(list));
+    initialize_list(metadata);
 
     // Read whole file
-    while (fread(buffer, sizeof(buffer), 1, f))
+    while ((fread(buffer, 1, 4, f) != EOF) && (!doend))
     {
-        for (int i = 0; i < sizeof(buffer); i++)
+        // Put in temp the values
+        list *temp = malloc(sizeof(list));
+        initialize_list(temp);
+
+        for (int i = 0; i < 4; i++)
         {
             if (buffer[i] == '\n')
             {
+                doend = 1;
                 break;
             }
 
-            printf("%c", buffer[i]);
+            // the first character is the letter
+            temp->letter = buffer[0];
+            // The third character is a number
+            temp->repetition = (int) buffer[2] - '0';
         }
+
+        if (((int) buffer[2] - '0') != '\0')
+        {
+            // Put value on main metadata arra and exclude NULL characters
+            temp->next = metadata->next;
+            metadata->next = temp;
+        }
+
+        if (doend)
+            break;
     }
 
+    printf("%c\n", metadata->letter);
+
+    print_all(metadata);
+
+    fclose(f);
     free(buffer);
+    free_list(metadata);
 
     return 0;
+}
+
+void print_all(list *l)
+{
+    // Print metadata
+    printf("%c:%i||", l->letter, l->repetition);
+
+    if (l->next != NULL)
+    {
+        print_all(l->next);
+    }
+}
+
+void free_list(list *first)
+{
+    if (first->next != NULL)
+    {
+        free_list(first->next);
+    }
+
+    free(first);
+}
+
+void initialize_list(list *l)
+{
+    if (l != NULL)
+    {
+        l->letter = '\0';
+        l->repetition = 0;
+        l->next = NULL;
+    }
 }

@@ -16,13 +16,6 @@ typedef struct pair
     node *seconde;
 } pair;
 
-typedef struct list
-{
-    char *letter;
-    int repetition;
-    struct list *next;
-} list;
-
 node *create_node(char c, int freq);
 pair find_two_smallest(node *f_pnt[256]);
 node *build_huffman(node **arr);
@@ -193,8 +186,6 @@ void free_arr(node *arr)
         free_arr(arr->right);
     }
 
-
-    printf("freeing %c\n", arr->letter);
     free(arr);
 }
 
@@ -290,8 +281,6 @@ node *build_huffman(node **arr)
         {
             break; 
         }
-
-        printf("adding up %c and %c\n", values.first->letter, values.seconde->letter);
         
         int sum = values.first->repetition + values.seconde->repetition;
 
