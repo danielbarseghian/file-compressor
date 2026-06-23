@@ -104,7 +104,9 @@ int main (int argc, char *argv[])
     {
         cpy_arr[i] = malloc(sizeof(node));
         *cpy_arr[i] = *node_arr[i];
+        printf("%c,%i, %p||", node_arr[i]->letter, node_arr[i]->repetition, node_arr[i]);
     }
+    printf("\n");
     
     node *t = build_huffman(node_arr);
 
