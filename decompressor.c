@@ -42,41 +42,20 @@ int main(int argc, char **argv)
     list *metadata = malloc(sizeof(list));
     initialize_list(metadata);
 
-    // Read whole file
-    while ((fread(buffer, 1, 4, f) != EOF) && (!doend))
+    char letter;
+    int rep = 0;
+
+    while (fscanf(f, " %c:%d|", &letter, &rep) == 2) 
     {
-        // Put in temp the values
         list *temp = malloc(sizeof(list));
         initialize_list(temp);
-
-        for (int i = 0; i < 4; i++)
-        {
-            if (buffer[i] == '\n')
-            {
-                doend = 1;
-                break;
-            }
-
-            // the first character is the letter
-            temp->letter = buffer[0];
-            // The third character is a number
-            temp->repetition = (int) buffer[2] - '0';
-        }
-
-        if (((int) buffer[2] - '0') != '\0')
-        {
-            // Put value on main metadata arra and exclude NULL characters
-            temp->next = metadata->next;
-            metadata->next = temp;
-        }
-
-        if (doend)
-            break;
+        temp->letter = letter;
+        temp->repetition = rep;
+        temp->next = metadata->next;
+        metadata->next = temp;
     }
 
-    printf("%c\n", metadata->letter);
-
-    print_all(metadata);
+    print_all(metadata); 
 
     fclose(f);
     free(buffer);
@@ -87,8 +66,16 @@ int main(int argc, char **argv)
 
 void print_all(list *l)
 {
-    // Print metadata
-    printf("%c:%i||", l->letter, l->repetition);
+    if (l == NULL)
+    {
+        return;
+    }
+
+    if (l->letter != '\0')
+    {
+        // Print metadata
+        printf("%c:%i||", l->letter, l->repetition);
+    }
 
     if (l->next != NULL)
     {
