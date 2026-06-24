@@ -13,7 +13,7 @@ typedef struct list
 typedef struct node
 {
     char letter;
-    int repetition;
+    unsigned int repetition;
     struct node *right;
     struct node *left;
 } node;
@@ -26,11 +26,14 @@ typedef struct pair
 
 int count = 0;
 
-void free_list(list *first);
+void build_codes(node *root, char *buffer, int depth, char **codes);
+void put_in_arr(list *l, int buffer, node **arr);
+pair find_two_smallest(node **arr);
+node *build_huffman(node **arr);
 void initialize_list(list *l);
+void free_list(list *first);
 void print_all(list *l);
-node *build_huffman(list *arr);
-pair find_two_smallest(list **arr);
+
 
 int node_count = 0;
 
@@ -54,62 +57,123 @@ int main(int argc, char **argv)
     const int BYTELEN = 8;
     char *buffer = malloc(sizeof(char) * BYTELEN);
 
-    int doend = 0;
+    list *temp_list = malloc(sizeof(list));
+    initialize_list(temp_list);
 
-    // Create an array
-    list *metadata = malloc(sizeof(list));
-    initialize_list(metadata);
+    int doend = 0;
 
     char letter;
     int rep = 0;
 
-    while (fscanf(f, " %c:%d|", &letter, &rep) == 2) 
+    while (fscanf(f, "%c:%d|", &letter, &rep) == 2) 
     {
-        // initialize value
-        list *temp = malloc(sizeof(list));
-        initialize_list(temp);
+        // Malloc 
+        list *temp = malloc(sizeof(temp));
 
-        // Put in temp
+        // Put the values
         temp->letter = letter;
         temp->repetition = rep;
 
-        // Put temp in front
-        temp->next = metadata->next;
-        metadata->next = temp;
+        // Put temporary pnt to point to the front
+        list *tmp_pnt = temp_list;
+
+        // Put the head to the temp
+        temp_list = temp;
+
+        // Put the next to the old head
+        temp_list->next = tmp_pnt;
 
         // Incremente
         node_count++;
     }
 
-    print_all(metadata);
+    // I cant put directly here since i can't know the count before.
+    node **meta_arr = malloc(sizeof(node *) * node_count);
+    if (meta_arr == NULL)
+    {
+        printf("error while malloc\n");
+        return 1;
+    }
+    
+    // Malloc every index
+    for (int i = 0; i < node_count; i++)
+    {
+        meta_arr[i] = malloc(sizeof(node));
+    }
+    
+    // Put it in the meta_arr
+    unsigned int b = 0;
+    put_in_arr(temp_list, b, meta_arr);
+
+    for (int i = 0; i < node_count; i++)
+    {
+        printf("%c:%i||", meta_arr[i]->letter, meta_arr[i]->repetition);
+    }
     printf("\n");
 
-    // A list for looping on every metadata is easier
-    list **meta_arr = malloc(sizeof(list *) * node_count);
-    int b = 0;
+    // Build the three
+    node *tree = build_huffman(meta_arr);
+    if (tree == NULL)
+    {
+        printf("error while building\n");
+        return 1;
+    }
 
-    put_in_arr(metadata, meta_arr, b);
-    for (int i = 0; i < node_count; i++)
+    char *bfr = malloc(sizeof(char) * node_count);
+    if (bfr == NULL)
+    {
+        printf("error while malloc\n");
+        return 1;
+    }
+
+    int depth = 0;
+    char **codes = calloc(256, sizeof(char *));
+    if (codes == NULL)
+    {
+        printf("error while calloc\n");
+        return 1;
+    }
+
+    build_codes(tree, bfr, depth, codes);
+
+    for (int i = 0; i < 256; i++)
+    {
+        if (codes[i] != NULL)
+        {
+            printf("%s | %c\n", codes[i], i);
+        }
+    }
 
     fclose(f);
     free(buffer);
-    free_list(metadata);
 
     return 0;
 }
 
-void put_in_arr(list *metadata, list **arr, int buffer)
+void build_codes(node *root, char *buffer, int depth, char **codes)
 {
-    // Put value
-    arr[buffer] = metadata;
+    if (!root) return;
 
-    // Incremente buffer by 1
-    buffer++;
-
-    // recall if arr->next is not null
-    if (metadata->next != NULL)
+    // LEAF
+    if (root->left == NULL && root->right == NULL)
     {
-        put_in_arr(metadata->next, arr, buffer);
+        buffer[depth] = '\0';  // CRITICAL FIX
+        codes[(unsigned char)root->letter] = strdup(buffer);
+        return;
+    }
+
+    // LEFT = 0
+    if (root->left)
+    {
+        buffer[depth] = '0';
+        build_codes(root->left, buffer, depth + 1, codes);
+    }
+
+    // RIGHT = 1
+    if (root->right)
+    {
+        buffer[depth] = '1';
+        build_codes(root->right, buffer, depth + 1, codes);
     }
 }
 
@@ -132,39 +196,8 @@ void print_all(list *l)
     }
 }
 
-pair find_two_smallest(list **arr)
-{
-    pair results;
-    
-    results.first = NULL;
-    results.seconde = NULL;
-
-    for (int i = 0; i < node_count; i++)
-    {
-        // Check for null
-        if (arr[i] == NULL)
-        {
-            continue;
-        }
-
-        if (results.first == NULL || arr[i]->repetition < results.first->repetition)
-        {
-            // Swap them and put value
-            results.seconde = results.first;
-            results.first = arr[i];
-        }
-
-        else if (results.seconde == NULL || arr[i]->repetition < results.seconde->repetition)
-        {
-            results.seconde = arr[i];
-        }
-    }
-
-    return results;
-}
-
 // Build a huffman tree and return the top element
-node *build_huffman(list *arr)
+node *build_huffman(node **arr)
 {
     while (1)
     {
@@ -217,6 +250,57 @@ node *build_huffman(list *arr)
     }
     
     return NULL;
+}
+
+pair find_two_smallest(node **arr)
+{
+    pair results;
+    
+    results.first = NULL;
+    results.seconde = NULL;
+
+    for (int i = 0; i < node_count; i++)
+    {
+        // Check for null
+        if (arr[i] == NULL)
+        {
+            continue;
+        }
+
+        if (results.first == NULL || arr[i]->repetition < results.first->repetition)
+        {
+            // Swap them and put value
+            results.seconde = results.first;
+            results.first = arr[i];
+        }
+
+        else if (results.seconde == NULL || arr[i]->repetition < results.seconde->repetition)
+        {
+            results.seconde = arr[i];
+        }
+    }
+
+    return results;
+}
+
+void put_in_arr(list *l, int buffer, node **arr)
+{
+    // put in arr
+    arr[buffer]->letter = l->letter;
+    arr[buffer]->repetition = l->repetition;
+
+    // initialize the other values
+    arr[buffer]->right = NULL;
+    arr[buffer]->left = NULL;
+
+    // Incremente
+    buffer++;
+    
+    // do next if not null
+    if ((l->next != NULL) && (buffer < node_count))
+    {
+        put_in_arr(l->next, buffer, arr);
+    }
 }
 
 void free_list(list *first)
