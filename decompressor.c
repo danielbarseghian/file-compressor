@@ -28,13 +28,14 @@ int count = 0;
 int node_count = 0;
 
 void build_codes(node *root, char *buffer, int depth, char **codes);
-void print_result(node *tree,char *byte[node_count]);
+char *get_result(node *tree, char *byte[node_count]);
 void put_in_arr(list *l, int buffer, node **arr);
 pair find_two_smallest(node **arr);
 node *build_huffman(node **arr);
 void initialize_list(list *l);
 void free_list(list *first);
 void print_all(list *l);
+void reverse(char *s);
 
 int rep_length = 0;
 
@@ -159,36 +160,67 @@ int main(int argc, char **argv)
     }
     printf("\n");
 
+    char *result = get_result(tree, byte_arr);
+    printf("to write: %s\n", result);
+
     fclose(f);
     return 0;
 }
 
-void print_result(node *tree,char *byte[node_count])
+char *get_result(node *tree, char *byte[node_count])
 {
     const int bytelen = 8;
+    node *current = NULL;
+    int rep_sum = 0;
+
+    char *final = malloc(sizeof(char) * rep_length + 1);
+
     // For every nodes
     for (int i = 0; i < node_count; i++)
-    {
+    {       
         // For every letters in the byte
         for (int j = 0; j < bytelen; j++)
         {
-            if ((byte[i][j]) == 0)
+            if (rep_sum >= rep_length)
+                break;
+
+            if ((byte[i][j]) == '0')
+                current = tree->left; // Assuming left is 0
+
+            else if ((byte[i][j]) == '1')
+                current = tree->right; // Assuming right is 1
+
+            // if its a leaf
+            if (current->left == NULL && current->right == NULL)
             {
-                tree = tree->left; // Assuming left is 0
+                // Append letter to the last character written
+                int len = strlen(final);
+
+                final[len] = current->letter;
+                final[len + 1] = '\0';
+
+                current = tree;
             }
 
-            if ((byte[i][j]) == 1)
-            {
-                tree = tree->right; // Assuming right is 1
-            }
-
-            // There is the letter
-            if (tree->left == NULL && tree->right == NULL)
-            {
-                // Print the letter
-                printf("%c\n", tree->letter);
-            }
+            rep_sum++;
         }
+    }
+
+    reverse(final);
+
+    return final;
+}
+
+void reverse(char *s)
+{
+    int len = strlen(s);
+    int middle = len / 2;
+
+    for (int i = 0; i < middle; i++)
+    {
+        char tmp = s[i];
+        s[i] = s[len - 1 - i];  
+        s[len - 1 - i] = tmp; 
     }
 }
 
