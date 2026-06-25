@@ -25,8 +25,10 @@ typedef struct pair
 } pair;
 
 int count = 0;
+int node_count = 0;
 
 void build_codes(node *root, char *buffer, int depth, char **codes);
+void print_result(node *tree,char *byte[node_count]);
 void put_in_arr(list *l, int buffer, node **arr);
 pair find_two_smallest(node **arr);
 node *build_huffman(node **arr);
@@ -35,7 +37,7 @@ void free_list(list *first);
 void print_all(list *l);
 
 int rep_length = 0;
-int node_count = 0;
+
 
 int main(int argc, char **argv)
 {
@@ -116,6 +118,7 @@ int main(int argc, char **argv)
 
     // Build the three
     node *tree = build_huffman(meta_arr);
+    
     if (tree == NULL)
     {
         printf("error while building\n");
@@ -126,7 +129,7 @@ int main(int argc, char **argv)
 
     // Now reopen the file in byte
     FILE *fb = fopen(argv[1], "rb");
-    int byte_arr[node_count];
+    char *byte_arr[node_count];
 
     // Skip metadata
     int c;
@@ -137,24 +140,30 @@ int main(int argc, char **argv)
     // read
     for (int i = 0; fread(&byte, 1, 1, fb) == 1; i++)
     {
-        // For each byte
+        char *temp = malloc(9); // 8 bits + null terminator
+
+        // Build bit string for each byte
         for (int j = 7; j >= 0; j--)
         {
-            // print
-            int b = (byte >> j) & 1;
-            printf("%d", b);
+            int bit = (byte >> j) & 1;
 
-            // put in array
-            byte_arr[i] = byte;
+            temp[7 - j] = '0' + bit;
         }
+        temp[9] = '\0';
+
+        byte_arr[i] = temp;
+
+        printf("%s", byte_arr[i]);
+
         printf(" ");
     }
+    printf("\n");
 
     fclose(f);
     return 0;
 }
 
-void print_result(node *tree, int byte[node_count])
+void print_result(node *tree,char *byte[node_count])
 {
     const int bytelen = 8;
     // For every nodes
@@ -163,7 +172,22 @@ void print_result(node *tree, int byte[node_count])
         // For every letters in the byte
         for (int j = 0; j < bytelen; j++)
         {
-            // if (byte[i] == 0)
+            if ((byte[i][j]) == 0)
+            {
+                tree = tree->left; // Assuming left is 0
+            }
+
+            if ((byte[i][j]) == 1)
+            {
+                tree = tree->right; // Assuming right is 1
+            }
+
+            // There is the letter
+            if (tree->left == NULL && tree->right == NULL)
+            {
+                // Print the letter
+                printf("%c\n", tree->letter);
+            }
         }
     }
 }
