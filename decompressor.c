@@ -34,7 +34,7 @@ void initialize_list(list *l);
 void free_list(list *first);
 void print_all(list *l);
 
-
+int rep_length = 0;
 int node_count = 0;
 
 int main(int argc, char **argv)
@@ -67,6 +67,9 @@ int main(int argc, char **argv)
 
     while (fscanf(f, "%c:%d|", &letter, &rep) == 2) 
     {
+        // Put in full repetition
+        rep_length += rep;
+
         // Malloc 
         list *temp = malloc(sizeof(temp));
 
@@ -119,35 +122,50 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    char *bfr = malloc(sizeof(char) * node_count);
-    if (bfr == NULL)
-    {
-        printf("error while malloc\n");
-        return 1;
-    }
+    fclose(f);
 
-    int depth = 0;
-    char **codes = calloc(256, sizeof(char *));
-    if (codes == NULL)
-    {
-        printf("error while calloc\n");
-        return 1;
-    }
+    // Now reopen the file in byte
+    FILE *fb = fopen(argv[1], "rb");
+    int byte_arr[node_count];
 
-    build_codes(tree, bfr, depth, codes);
+    // Skip metadata
+    int c;
+    while ((c = fgetc(fb)) != EOF && c != '\n');
 
-    for (int i = 0; i < 256; i++)
+    unsigned char byte;
+
+    // read
+    for (int i = 0; fread(&byte, 1, 1, fb) == 1; i++)
     {
-        if (codes[i] != NULL)
+        // For each byte
+        for (int j = 7; j >= 0; j--)
         {
-            printf("%s | %c\n", codes[i], i);
+            // print
+            int b = (byte >> j) & 1;
+            printf("%d", b);
+
+            // put in array
+            byte_arr[i] = byte;
         }
+        printf(" ");
     }
 
     fclose(f);
-    free(buffer);
-
     return 0;
+}
+
+void print_result(node *tree, int byte[node_count])
+{
+    const int bytelen = 8;
+    // For every nodes
+    for (int i = 0; i < node_count; i++)
+    {
+        // For every letters in the byte
+        for (int j = 0; j < bytelen; j++)
+        {
+            // if (byte[i] == 0)
+        }
+    }
 }
 
 void build_codes(node *root, char *buffer, int depth, char **codes)
