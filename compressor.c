@@ -97,6 +97,9 @@ int main (int argc, char *argv[])
             put++;
         }
     }
+    printf("\n");
+
+    // I need to sort node_arr
 
     node **cpy_arr = malloc(sizeof(node*) * node_count);
 
@@ -104,6 +107,8 @@ int main (int argc, char *argv[])
     {
         cpy_arr[i] = malloc(sizeof(node));
         *cpy_arr[i] = *node_arr[i];
+
+        printf("%c:%i||", node_arr[i]->letter, node_arr[i]->repetition);
     }
     printf("\n");
     
@@ -131,6 +136,14 @@ int main (int argc, char *argv[])
     }
 
     build_codes(t, bfr, depth, codes);
+
+    for (int i = 0;i < 256; i++)
+    {
+        if (codes[i] != NULL)
+        {
+            printf("%c: %s\n", i, codes[i]);
+        }
+    }
 
     const int LEN = strlen(buffer);
     char *new_arr[LEN];
@@ -224,11 +237,17 @@ void write_file(char **new_arr, int LEN, char *name, node **node_arr)
 
             if (bit_count == 8)
             {
+                for (int j = 7; j >= 0; j--)
+                {
+                    printf("%d", (byte >> j) & 1);
+                }
+                printf(" ");
                 fwrite(&byte, 1, 1, f);
 
                 byte = 0;
                 bit_count = 0;
             }
+            printf(" ");
         }
     }
 
@@ -236,6 +255,7 @@ void write_file(char **new_arr, int LEN, char *name, node **node_arr)
     {
         byte <<= (8 - bit_count);
 
+        printf("writing\n");
         fwrite(&byte, 1, 1, f);
     }
 
@@ -289,6 +309,7 @@ node *build_huffman(node **arr)
         node *parent = malloc(sizeof(node));
         parent->repetition = sum;
         parent->letter = '\0';
+
         parent->right = values.first;
         parent->left = values.seconde;
 

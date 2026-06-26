@@ -26,19 +26,18 @@ typedef struct pair
 
 int count = 0;
 int node_count = 0;
+int byte_count = 0;
+int rep_length = 0;
 
-void build_codes(node *root, char *buffer, int depth, char **codes);
-char *get_result(node *tree, char *byte[node_count]);
+char *get_result(node *tree, char *byte[node_count], int byte_count);
 void put_in_arr(list *l, int buffer, node **arr);
+void reverse_arr(node **arr, int len);
 pair find_two_smallest(node **arr);
 node *build_huffman(node **arr);
 void initialize_list(list *l);
 void free_list(list *first);
 void print_all(list *l);
 void reverse(char *s);
-
-int rep_length = 0;
-
 
 int main(int argc, char **argv)
 {
@@ -100,7 +99,7 @@ int main(int argc, char **argv)
         printf("error while malloc\n");
         return 1;
     }
-    
+
     // Malloc every index
     for (int i = 0; i < node_count; i++)
     {
@@ -111,15 +110,19 @@ int main(int argc, char **argv)
     unsigned int b = 0;
     put_in_arr(temp_list, b, meta_arr);
 
+    // Reverse array
+    reverse_arr(meta_arr, node_count);
+
     for (int i = 0; i < node_count; i++)
     {
         printf("%c:%i||", meta_arr[i]->letter, meta_arr[i]->repetition);
+        byte_count += meta_arr[i]->repetition;
     }
     printf("\n");
 
     // Build the three
     node *tree = build_huffman(meta_arr);
-    
+
     if (tree == NULL)
     {
         printf("error while building\n");
@@ -154,41 +157,64 @@ int main(int argc, char **argv)
 
         byte_arr[i] = temp;
 
-        printf("%s", byte_arr[i]);
-
         printf(" ");
     }
     printf("\n");
 
-    char *result = get_result(tree, byte_arr);
+    char *result = get_result(tree, byte_arr, byte_count);
+
+    reverse(result);
+
+    // CHECK THE ORDER
+
     printf("to write: %s\n", result);
 
-    fclose(f);
+    fclose(fb);
+
+    FILE *fw = fopen(argv[2], "w");
+
+    if (fw == NULL)
+    {
+        printf("error opening %s\n", argv[2]);
+        return 1;
+    }
+
+    fwrite(result, 1, strlen(result), fw);
+
+    fclose(fw);
     return 0;
 }
 
-char *get_result(node *tree, char *byte[node_count])
+char *get_result(node *tree, char *byte[node_count], int byte_count)
 {
     const int bytelen = 8;
-    node *current = NULL;
+    node *current = tree;
     int rep_sum = 0;
 
     char *final = malloc(sizeof(char) * rep_length + 1);
+    int times = 0;
+    int byte_read = 0;
 
+    printf("%i\n", byte_count);
     // For every nodes
-    for (int i = 0; i < node_count; i++)
-    {       
+    for (int i = 0; byte_read < byte_count; i++)
+    {
+        printf("%s\n", byte[i]);
         // For every letters in the byte
         for (int j = 0; j < bytelen; j++)
         {
-            if (rep_sum >= rep_length)
-                break;
+            printf("%c\n", byte[i][j]);
 
+            // Break if we finished
+            if (byte_read >= byte_count)
+            {
+                break;
+            }
             if ((byte[i][j]) == '0')
-                current = tree->left; // Assuming left is 0
+                current = current->left;
 
             else if ((byte[i][j]) == '1')
-                current = tree->right; // Assuming right is 1
+                current = current->right;
 
             // if its a leaf
             if (current->left == NULL && current->right == NULL)
@@ -196,13 +222,13 @@ char *get_result(node *tree, char *byte[node_count])
                 // Append letter to the last character written
                 int len = strlen(final);
 
+                printf("found %c\n", current->letter);
                 final[len] = current->letter;
                 final[len + 1] = '\0';
 
-                current = tree;
+                byte_read++;
+                current = tree; // reset
             }
-
-            rep_sum++;
         }
     }
 
@@ -224,30 +250,15 @@ void reverse(char *s)
     }
 }
 
-void build_codes(node *root, char *buffer, int depth, char **codes)
+void reverse_arr(node **arr, int len)
 {
-    if (!root) return;
+    int middle = len / 2;
 
-    // LEAF
-    if (root->left == NULL && root->right == NULL)
+    for (int i = 0; i < middle; i++)
     {
-        buffer[depth] = '\0';  // CRITICAL FIX
-        codes[(unsigned char)root->letter] = strdup(buffer);
-        return;
-    }
-
-    // LEFT = 0
-    if (root->left)
-    {
-        buffer[depth] = '0';
-        build_codes(root->left, buffer, depth + 1, codes);
-    }
-
-    // RIGHT = 1
-    if (root->right)
-    {
-        buffer[depth] = '1';
-        build_codes(root->right, buffer, depth + 1, codes);
+        node *tmp = arr[i];
+        arr[i] = arr[len - 1 - i];  
+        arr[len - 1 - i] = tmp; 
     }
 }
 
@@ -270,7 +281,7 @@ void print_all(list *l)
     }
 }
 
-// Build a huffman tree and return the top element
+/// Build a huffman tree and return the top element
 node *build_huffman(node **arr)
 {
     while (1)
@@ -290,6 +301,7 @@ node *build_huffman(node **arr)
         node *parent = malloc(sizeof(node));
         parent->repetition = sum;
         parent->letter = '\0';
+
         parent->right = values.first;
         parent->left = values.seconde;
 
