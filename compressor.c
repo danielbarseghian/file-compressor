@@ -16,11 +16,12 @@ typedef struct pair
     node *seconde;
 } pair;
 
-node *create_node(char c, int freq);
-pair find_two_smallest(node *f_pnt[256]);
-node *build_huffman(node **arr);
+void write_file(char **new_arr, int fsize, char *name, node **node_arr);
 void build_codes(node *root, char *buffer, int depth, char **codes);
-void write_file(char **new_arr, int LEN, char *name, node **node_arr);
+const char *get_filename_ext(const char *filename);
+pair find_two_smallest(node *f_pnt[256]);
+node *create_node(char c, int freq);
+node *build_huffman(node **arr);
 void free_arr(node *arr);
 void free_tree(node *t);
 
@@ -37,15 +38,25 @@ int main (int argc, char *argv[])
     {
         printf("usage: ./compressor file1 file2\n");
         return 1;
-    }  
+    }
+
+    // Get the first file extension
+    const char *first = get_filename_ext(argv[1]);
+    const char *second = get_filename_ext(argv[2]);
+    if (strcmp(first, second) != 0)
+    {
+        printf("extensions must match\n");
+        return 1;
+    }
 
     // Read file
-    FILE *f = fopen(argv[1], "r");
+    FILE *f = fopen(argv[1], "rb");
     if (f == NULL)
     {
         printf("Error: Could not open file %s\n", argv[1]);
         return 1;
     }
+
     fseek(f, 0, SEEK_END);
     long fsize = ftell(f);
     if (fsize == 0)
@@ -64,7 +75,7 @@ int main (int argc, char *argv[])
     buffer[fsize] = '\0';
 
     // loop until Null
-    for (int i = 0; buffer[i] != '\0'; i++)
+    for (long i = 0; i < fsize; i++)
     {
         frequencies[(unsigned char) buffer[i]]++;
     }
@@ -110,6 +121,7 @@ int main (int argc, char *argv[])
 
         printf("%c:%i||", node_arr[i]->letter, node_arr[i]->repetition);
     }
+    printf("%i\n", node_count);
     printf("\n");
     
     node *t = build_huffman(node_arr);
@@ -120,7 +132,7 @@ int main (int argc, char *argv[])
         return 1;
     }
 
-    char *bfr = malloc(sizeof(char) * node_count);
+    char *bfr = malloc(sizeof(char) * 32 + 1); // in total its 257
     if (bfr == NULL)
     {
         printf("error while malloc\n");
@@ -136,23 +148,14 @@ int main (int argc, char *argv[])
     }
 
     build_codes(t, bfr, depth, codes);
+    
+    char *new_arr[fsize];
 
-    for (int i = 0;i < 256; i++)
+    for (int i = 0; i < fsize; i++)
     {
-        if (codes[i] != NULL)
-        {
-            printf("%c: %s\n", i, codes[i]);
-        }
+        new_arr[i] = codes[(unsigned char)buffer[i]];
     }
-
-    const int LEN = strlen(buffer);
-    char *new_arr[LEN];
-
-    for (int i = 0; i < LEN; i++)
-    {
-        new_arr[i] = codes[buffer[i]];
-    }
-    write_file(new_arr, LEN, argv[2], cpy_arr);
+    write_file(new_arr, fsize, argv[2], cpy_arr);
 
     for (int i = 0; i < node_count; i++)
     {
@@ -188,6 +191,17 @@ void free_tree(node *t)
     free(t);
 }
 
+const char *get_filename_ext(const char *filename)
+{
+    const char *dot = strrchr(filename, '.');
+
+    if (!dot || dot == filename)
+        return "";
+
+    return dot + 1;
+}
+
+
 void free_arr(node *arr)
 {
     if (arr->left != NULL)
@@ -203,11 +217,14 @@ void free_arr(node *arr)
     free(arr);
 }
 
-void write_file(char **new_arr, int LEN, char *name, node **node_arr)
+void write_file(char **new_arr, int fsize, char *name, node **node_arr)
 {
     FILE *f = fopen(name, "wb");
     if (f == NULL)
+    {
+        printf("open fail");
         return;
+    }
 
     // Put metadata
     
@@ -224,7 +241,7 @@ void write_file(char **new_arr, int LEN, char *name, node **node_arr)
     unsigned char byte = 0;
     int bit_count = 0;
 
-    for (int i = 0; i < LEN; i++)
+    for (int i = 0; i < fsize; i++)
     {
         for (int j = 0; new_arr[i][j] != '\0'; j++)
         {
@@ -237,17 +254,11 @@ void write_file(char **new_arr, int LEN, char *name, node **node_arr)
 
             if (bit_count == 8)
             {
-                for (int j = 7; j >= 0; j--)
-                {
-                    printf("%d", (byte >> j) & 1);
-                }
-                printf(" ");
                 fwrite(&byte, 1, 1, f);
 
                 byte = 0;
                 bit_count = 0;
             }
-            printf(" ");
         }
     }
 
@@ -255,7 +266,6 @@ void write_file(char **new_arr, int LEN, char *name, node **node_arr)
     {
         byte <<= (8 - bit_count);
 
-        printf("writing\n");
         fwrite(&byte, 1, 1, f);
     }
 

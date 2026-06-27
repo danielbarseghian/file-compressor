@@ -25,11 +25,12 @@ typedef struct pair
 } pair;
 
 int count = 0;
-int node_count = 0;
+long node_count = 0;
 int byte_count = 0;
 int rep_length = 0;
 
-char *get_result(node *tree, char *byte[node_count], int byte_count);
+char *get_result(node *tree, char *byte[node_count]);
+const char *get_filename_ext(const char *filename);
 void put_in_arr(list *l, int buffer, node **arr);
 void reverse_arr(node **arr, int len);
 pair find_two_smallest(node **arr);
@@ -44,6 +45,15 @@ int main(int argc, char **argv)
     if (argc != 3)
     {
         printf("Usage: ./decompressor compressed decompressed\n");
+        return 1;
+    }
+
+    // Get the first file extension
+    const char *first = get_filename_ext(argv[1]);
+    const char *second = get_filename_ext(argv[2]);
+    if (strcmp(first, second) != 0)
+    {
+        printf("extensions must match\n");
         return 1;
     }
 
@@ -73,7 +83,7 @@ int main(int argc, char **argv)
         rep_length += rep;
 
         // Malloc 
-        list *temp = malloc(sizeof(temp));
+        list *temp = malloc(sizeof(list));
 
         // Put the values
         temp->letter = letter;
@@ -92,7 +102,7 @@ int main(int argc, char **argv)
         node_count++;
     }
 
-    // I cant put directly here since i can't know the count before.
+    // I cant put directly here since i can't know the count before
     node **meta_arr = malloc(sizeof(node *) * node_count);
     if (meta_arr == NULL)
     {
@@ -133,12 +143,19 @@ int main(int argc, char **argv)
 
     // Now reopen the file in byte
     FILE *fb = fopen(argv[1], "rb");
-    char *byte_arr[node_count];
 
     // Skip metadata
     int c;
     while ((c = fgetc(fb)) != EOF && c != '\n');
 
+    // get file size
+    long start = ftell(fb);
+    fseek(fb, 0, SEEK_END);
+    long end = ftell(fb);
+    long fsize = end - start;
+    fseek(fb, start, SEEK_SET);
+
+    char *byte_arr[fsize];
     unsigned char byte;
 
     // read
@@ -153,21 +170,21 @@ int main(int argc, char **argv)
 
             temp[7 - j] = '0' + bit;
         }
-        temp[9] = '\0';
+        temp[8] = '\0';
 
         byte_arr[i] = temp;
 
-        printf(" ");
+        printf("Found: %s\n", temp);
     }
     printf("\n");
 
-    char *result = get_result(tree, byte_arr, byte_count);
+    char *result = get_result(tree, byte_arr);
 
-    reverse(result);
-
-    // CHECK THE ORDER
-
-    printf("to write: %s\n", result);
+    if (result == NULL) 
+    {
+        printf("error: result is NULL\n");
+        return 1;
+    }
 
     fclose(fb);
 
@@ -179,37 +196,57 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    reverse(result);
+    printf("write: %s\n", result);
     fwrite(result, 1, strlen(result), fw);
 
     fclose(fw);
     return 0;
 }
 
-char *get_result(node *tree, char *byte[node_count], int byte_count)
+void reverse(char *s)
+{
+    int len = strlen(s);
+    int middle = len / 2;
+
+    for (int i = 0; i < middle; i++)
+    {
+        char tmp = s[i];
+        s[i] = s[len - 1 - i];  
+        s[len - 1 - i] = tmp; 
+    }
+}
+
+const char *get_filename_ext(const char *filename)
+{
+    const char *dot = strrchr(filename, '.');
+
+    if (!dot || dot == filename)
+        return "";
+
+    return dot + 1;
+}
+
+char *get_result(node *tree, char *byte[node_count])
 {
     const int bytelen = 8;
     node *current = tree;
     int rep_sum = 0;
 
     char *final = malloc(sizeof(char) * rep_length + 1);
+    final[0] = '\0';
     int times = 0;
     int byte_read = 0;
 
-    printf("%i\n", byte_count);
     // For every nodes
-    for (int i = 0; byte_read < byte_count; i++)
+    for (int i = 0; byte_read < rep_length; i++)
     {
-        printf("%s\n", byte[i]);
         // For every letters in the byte
         for (int j = 0; j < bytelen; j++)
         {
-            printf("%c\n", byte[i][j]);
-
-            // Break if we finished
-            if (byte_read >= byte_count)
-            {
+            if (byte_read >= rep_length)
                 break;
-            }
+
             if ((byte[i][j]) == '0')
                 current = current->left;
 
@@ -232,22 +269,7 @@ char *get_result(node *tree, char *byte[node_count], int byte_count)
         }
     }
 
-    reverse(final);
-
     return final;
-}
-
-void reverse(char *s)
-{
-    int len = strlen(s);
-    int middle = len / 2;
-
-    for (int i = 0; i < middle; i++)
-    {
-        char tmp = s[i];
-        s[i] = s[len - 1 - i];  
-        s[len - 1 - i] = tmp; 
-    }
 }
 
 void reverse_arr(node **arr, int len)
