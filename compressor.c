@@ -148,6 +148,14 @@ int main (int argc, char *argv[])
     }
 
     build_codes(t, bfr, depth, codes);
+
+    for (int i = 0; i < 256; i++)
+    {
+        if (codes[i] != NULL)
+        {
+            printf("%c: %s\n", i, codes[i]);
+        }
+    }
     
     char *new_arr[fsize];
 

@@ -29,6 +29,7 @@ long node_count = 0;
 int byte_count = 0;
 int rep_length = 0;
 
+void build_codes(node *root, char *buffer, int depth, char **codes);
 char *get_result(node *tree, char *byte[node_count]);
 const char *get_filename_ext(const char *filename);
 void put_in_arr(list *l, int buffer, node **arr);
@@ -139,6 +140,31 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    char *bfr = malloc(sizeof(char) * 32 + 1); // in total its 257
+    if (bfr == NULL)
+    {
+        printf("error while malloc\n");
+        return 1;
+    }
+
+    int depth = 0;
+    char **codes = calloc(256, sizeof(char *));
+    if (codes == NULL)
+    {
+        printf("error while calloc\n");
+        return 1;
+    }
+
+    build_codes(tree, bfr, depth, codes);
+
+    for (int i = 0; i < 256; i++)
+    {
+        if (codes[i] != NULL)
+        {
+            printf("%c: %s\n", i, codes[i]);
+        }
+    }
+
     fclose(f);
 
     // Now reopen the file in byte
@@ -204,6 +230,33 @@ int main(int argc, char **argv)
     return 0;
 }
 
+void build_codes(node *root, char *buffer, int depth, char **codes)
+{
+    if (!root) return;
+
+    // LEAF
+    if (root->left == NULL && root->right == NULL)
+    {
+        buffer[depth] = '\0';  // CRITICAL FIX
+        codes[(unsigned char)root->letter] = strdup(buffer);
+        return;
+    }
+
+    // LEFT = 0
+    if (root->left)
+    {
+        buffer[depth] = '0';
+        build_codes(root->left, buffer, depth + 1, codes);
+    }
+
+    // RIGHT = 1
+    if (root->right)
+    {
+        buffer[depth] = '1';
+        build_codes(root->right, buffer, depth + 1, codes);
+    }
+}
+
 void reverse(char *s)
 {
     int len = strlen(s);
@@ -258,8 +311,7 @@ char *get_result(node *tree, char *byte[node_count])
             {
                 // Append letter to the last character written
                 int len = strlen(final);
-
-                printf("found %c\n", current->letter);
+                
                 final[len] = current->letter;
                 final[len + 1] = '\0';
 
