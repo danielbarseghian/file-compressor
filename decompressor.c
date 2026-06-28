@@ -28,6 +28,7 @@ int count = 0;
 long node_count = 0;
 int byte_count = 0;
 int rep_length = 0;
+long after_meta = 0;
 
 void build_codes(node *root, char *buffer, int depth, char **codes);
 char *get_result(node *tree, char *byte[node_count]);
@@ -38,8 +39,7 @@ pair find_two_smallest(node **arr);
 node *build_huffman(node **arr);
 void initialize_list(list *l);
 void free_list(list *first);
-void print_all(list *l);
-void reverse(char *s);
+void print_all(list *l);\
 
 int main(int argc, char **argv)
 {
@@ -128,6 +128,7 @@ int main(int argc, char **argv)
     {
         printf("%c:%i||", meta_arr[i]->letter, meta_arr[i]->repetition);
         byte_count += meta_arr[i]->repetition;
+        after_meta = ftell(f);
     }
     printf("\n");
 
@@ -171,15 +172,15 @@ int main(int argc, char **argv)
     FILE *fb = fopen(argv[1], "rb");
 
     // Skip metadata
-    int c;
-    while ((c = fgetc(fb)) != EOF && c != '\n');
+    fseek(fb, after_meta, SEEK_SET);
+    long current = ftell(fb);
 
     // get file size
-    long start = ftell(fb);
+    printf("%li", current);
     fseek(fb, 0, SEEK_END);
     long end = ftell(fb);
-    long fsize = end - start;
-    fseek(fb, start, SEEK_SET);
+    long fsize = end - current;
+    fseek(fb, after_meta, SEEK_SET);
 
     char *byte_arr[fsize];
     unsigned char byte;
@@ -189,18 +190,22 @@ int main(int argc, char **argv)
     {
         char *temp = malloc(9); // 8 bits + null terminator
 
+        printf("Found: ");
         // Build bit string for each byte
         for (int j = 7; j >= 0; j--)
         {
             int bit = (byte >> j) & 1;
 
+            printf("%i", bit);
+
             temp[7 - j] = '0' + bit;
         }
+        printf("\n");
         temp[8] = '\0';
 
         byte_arr[i] = temp;
 
-        printf("Found: %s\n", temp);
+        //printf("Found: %s\n", temp);
     }
     printf("\n");
 
@@ -222,8 +227,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    reverse(result);
-    printf("write: %s\n", result);
     fwrite(result, 1, strlen(result), fw);
 
     fclose(fw);
@@ -254,19 +257,6 @@ void build_codes(node *root, char *buffer, int depth, char **codes)
     {
         buffer[depth] = '1';
         build_codes(root->right, buffer, depth + 1, codes);
-    }
-}
-
-void reverse(char *s)
-{
-    int len = strlen(s);
-    int middle = len / 2;
-
-    for (int i = 0; i < middle; i++)
-    {
-        char tmp = s[i];
-        s[i] = s[len - 1 - i];  
-        s[len - 1 - i] = tmp; 
     }
 }
 

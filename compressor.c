@@ -16,13 +16,14 @@ typedef struct pair
     node *seconde;
 } pair;
 
-void write_file(char **new_arr, int fsize, char *name, node **node_arr);
+void write_file(char **byte_arr, int arr_size, char *name, node **node_arr);
 void build_codes(node *root, char *buffer, int depth, char **codes);
 const char *get_filename_ext(const char *filename);
 pair find_two_smallest(node *f_pnt[256]);
 node *create_node(char c, int freq);
 node *build_huffman(node **arr);
 void free_arr(node *arr);
+int get_value(char *num);
 void free_tree(node *t);
 
 int node_count = 0;
@@ -157,13 +158,14 @@ int main (int argc, char *argv[])
         }
     }
     
-    char *new_arr[fsize];
+    char *byte_arr[fsize];
 
     for (int i = 0; i < fsize; i++)
     {
-        new_arr[i] = codes[(unsigned char)buffer[i]];
+        byte_arr[i] = codes[(unsigned char)buffer[i]];
     }
-    write_file(new_arr, fsize, argv[2], cpy_arr);
+
+    write_file(byte_arr, fsize, argv[2], cpy_arr);
 
     for (int i = 0; i < node_count; i++)
     {
@@ -225,8 +227,10 @@ void free_arr(node *arr)
     free(arr);
 }
 
-void write_file(char **new_arr, int fsize, char *name, node **node_arr)
+void write_file(char **byte_arr, int arr_size, char *name, node **node_arr)
 {
+    int meta_byte_count = 0;
+
     FILE *f = fopen(name, "wb");
     if (f == NULL)
     {
@@ -243,38 +247,67 @@ void write_file(char **new_arr, int fsize, char *name, node **node_arr)
         snprintf(temp, 20, "%c:%i|", node_arr[i]->letter, node_arr[i]->repetition);
 
         fwrite(temp, 1, strlen(temp), f);
+
+        // Seek
+        fseek(f, 0, SEEK_CUR);
     }
     fwrite("\n", 1, 1, f);
 
-    unsigned char byte = 0;
-    int bit_count = 0;
+    // Didnt respect the primary rule, never use AI to fully write code
+    // Im going to learn bitwise operators and how to code it myself.
 
-    for (int i = 0; i < fsize; i++)
+    // Point to final so we can change it when needed
+    unsigned char final = 0;
+    int fcount = 0;
+    int arr_index = 0;
+
+    // For every arrays
+    while (arr_index < arr_size)
     {
-        for (int j = 0; new_arr[i][j] != '\0'; j++)
+        // For every letters
+        for (int i = 0, len = strlen(byte_arr[arr_index]); i < len; i++)
         {
-            byte <<= 1;
+            // left shift
+            final <<= 1;
 
-            if (new_arr[i][j] == '1')
-                byte |= 1;
+            // Append if there is the number
+            if (byte_arr[arr_index][i] == '1')
+                final |= 1;
 
-            bit_count++;
+            fcount++;
 
-            if (bit_count == 8)
+            // Reset both
+            if (fcount >= 8)
             {
-                fwrite(&byte, 1, 1, f);
+                printf("writing: ");
+                for (int i = 7; i >= 0; i--)
+                {
+                    printf("%d", (final >> i) & 1);
+                }
+                printf("\n");
 
-                byte = 0;
-                bit_count = 0;
+                // write
+                fwrite(&final, 1, 1, f);
+
+                // Reset count
+                fcount = 0;
+                
+                // reset final
+                final = 0;
+            }
+
+            if (i == (len - 1))
+            {
+                arr_index++;
             }
         }
     }
 
-    if (bit_count > 0)
+    // write remaining
+    if (fcount > 0)
     {
-        byte <<= (8 - bit_count);
-
-        fwrite(&byte, 1, 1, f);
+        final <<= (8 - fcount);
+        fwrite(&final, 1, 1, f);
     }
 
     fclose(f);
