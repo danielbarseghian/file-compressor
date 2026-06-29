@@ -2,18 +2,20 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 typedef struct list
 {
-    char letter;
-    int repetition;
+    unsigned char letter;
+    uint32_t repetition;
     struct list *next;
 } list;
 
 typedef struct node
 {
-    char letter;
-    unsigned int repetition;
+    unsigned char letter;
+    uint32_t repetition;
     struct node *right;
     struct node *left;
 } node;
@@ -24,16 +26,15 @@ typedef struct pair
     node *seconde;
 } pair;
 
-int count = 0;
-long node_count = 0;
-int byte_count = 0;
-int rep_length = 0;
+uint32_t node_count = 0;
+uint32_t byte_count = 0;
+uint32_t rep_length = 0;
 long after_meta = 0;
 
 void build_codes(node *root, char *buffer, int depth, char **codes);
 char *get_result(node *tree, char *byte[node_count]);
 const char *get_filename_ext(const char *filename);
-void put_in_arr(list *l, int buffer, node **arr);
+void put_in_arr(list *l, uint32_t buffer, node **arr);
 void reverse_arr(node **arr, int len);
 pair find_two_smallest(node **arr);
 node *build_huffman(node **arr);
@@ -52,6 +53,7 @@ int main(int argc, char **argv)
     // Get the first file extension
     const char *first = get_filename_ext(argv[1]);
     const char *second = get_filename_ext(argv[2]);
+
     if (strcmp(first, second) != 0)
     {
         printf("extensions must match\n");
@@ -59,7 +61,7 @@ int main(int argc, char **argv)
     }
 
     // read the metadata
-    FILE *f = fopen(argv[1], "r");
+    FILE *f = fopen(argv[1], "rb");
     if (f == NULL)
     {
         printf("Error while opening compressed file\n");
@@ -75,15 +77,19 @@ int main(int argc, char **argv)
 
     int doend = 0;
 
-    char letter;
-    int rep = 0;
+    // Get the size
+    fread(&node_count, sizeof(uint32_t), 1, f);
+    printf("size: %" PRIu32 "\n", node_count);
 
-    while (fscanf(f, "%c:%d|", &letter, &rep) == 2) 
+    unsigned char letter;
+    uint32_t rep = 0;
+
+    for (uint32_t i = 0; i < node_count && fread(&letter, sizeof(unsigned char), 1, f) == 1 &&fread(&rep, sizeof(uint32_t), 1, f) == 1; i++)
     {
         // Put in full repetition
         rep_length += rep;
 
-        // Malloc 
+        // Malloc
         list *temp = malloc(sizeof(list));
 
         // Put the values
@@ -98,10 +104,11 @@ int main(int argc, char **argv)
 
         // Put the next to the old head
         temp_list->next = tmp_pnt;
-
-        // Incremente
-        node_count++;
     }
+
+    // Capture file position right after all metadata has been read
+    after_meta = ftell(f);
+    printf("after_meta: %ld\n", after_meta);
 
     // I cant put directly here since i can't know the count before
     node **meta_arr = malloc(sizeof(node *) * node_count);
@@ -112,23 +119,22 @@ int main(int argc, char **argv)
     }
 
     // Malloc every index
-    for (int i = 0; i < node_count; i++)
+    for (uint32_t i = 0; i < node_count; i++)
     {
         meta_arr[i] = malloc(sizeof(node));
     }
-    
+
     // Put it in the meta_arr
-    unsigned int b = 0;
+    uint32_t b = 0;
     put_in_arr(temp_list, b, meta_arr);
 
     // Reverse array
     reverse_arr(meta_arr, node_count);
 
-    for (int i = 0; i < node_count; i++)
+    for (uint32_t i = 0; i < node_count; i++)
     {
-        printf("%c:%i||", meta_arr[i]->letter, meta_arr[i]->repetition);
+        printf("%c:%" PRIu32 "||", (unsigned char) meta_arr[i]->letter, meta_arr[i]->repetition);
         byte_count += meta_arr[i]->repetition;
-        after_meta = ftell(f);
     }
     printf("\n");
 
@@ -176,42 +182,39 @@ int main(int argc, char **argv)
     long current = ftell(fb);
 
     // get file size
-    printf("%li", current);
     fseek(fb, 0, SEEK_END);
     long end = ftell(fb);
     long fsize = end - current;
     fseek(fb, after_meta, SEEK_SET);
 
     char *byte_arr[fsize];
-    unsigned char byte;
+    uint32_t byte = 0;
+
+    int s = fread(&byte, sizeof(uint32_t), 1, fb);
+    printf("%i\n", s);
 
     // read
-    for (int i = 0; fread(&byte, 1, 1, fb) == 1; i++)
+    for (int i = 0; fread(&byte, sizeof(uint32_t), 1, fb); i++)
     {
-        char *temp = malloc(9); // 8 bits + null terminator
+        char *temp = malloc(33); // 32 bits + null terminator
 
         printf("Found: ");
-        // Build bit string for each byte
-        for (int j = 7; j >= 0; j--)
+        // Build bit string for each uint32_t (MSB first)
+        for (int j = 31; j >= 0; j--)
         {
             int bit = (byte >> j) & 1;
-
-            printf("%i", bit);
-
-            temp[7 - j] = '0' + bit;
+            temp[31 - j] = '0' + bit;
         }
-        printf("\n");
-        temp[8] = '\0';
+        temp[32] = '\0';
+        printf("%s\n", temp);
 
         byte_arr[i] = temp;
-
-        //printf("Found: %s\n", temp);
     }
-    printf("\n");
+    printf("after\n");
 
     char *result = get_result(tree, byte_arr);
 
-    if (result == NULL) 
+    if (result == NULL)
     {
         printf("error: result is NULL\n");
         return 1;
@@ -272,14 +275,14 @@ const char *get_filename_ext(const char *filename)
 
 char *get_result(node *tree, char *byte[node_count])
 {
-    const int bytelen = 8;
+    const int bytelen = 32; // 32 bits per uint32_t
     node *current = tree;
-    int rep_sum = 0;
+    uint32_t rep_sum = 0;
 
     char *final = malloc(sizeof(char) * rep_length + 1);
     final[0] = '\0';
     int times = 0;
-    int byte_read = 0;
+    uint32_t byte_read = 0;
 
     // For every nodes
     for (int i = 0; byte_read < rep_length; i++)
@@ -301,7 +304,7 @@ char *get_result(node *tree, char *byte[node_count])
             {
                 // Append letter to the last character written
                 int len = strlen(final);
-                
+
                 final[len] = current->letter;
                 final[len + 1] = '\0';
 
@@ -321,8 +324,8 @@ void reverse_arr(node **arr, int len)
     for (int i = 0; i < middle; i++)
     {
         node *tmp = arr[i];
-        arr[i] = arr[len - 1 - i];  
-        arr[len - 1 - i] = tmp; 
+        arr[i] = arr[len - 1 - i];
+        arr[len - 1 - i] = tmp;
     }
 }
 
@@ -336,7 +339,7 @@ void print_all(list *l)
     if (l->letter != '\0')
     {
         // Print metadata
-        printf("%c:%i||", l->letter, l->repetition);
+        printf("%c:%" PRIu32 "||", l->letter, l->repetition);
     }
 
     if (l->next != NULL)
@@ -356,10 +359,10 @@ node *build_huffman(node **arr)
         // If there is no second node, the tree is fully built
         if (values.seconde == NULL)
         {
-            break; 
+            break;
         }
-        
-        int sum = values.first->repetition + values.seconde->repetition;
+
+        uint32_t sum = values.first->repetition + values.seconde->repetition;
 
         // Create a new parent node
         node *parent = malloc(sizeof(node));
@@ -373,7 +376,7 @@ node *build_huffman(node **arr)
         int s_value = -1;
 
         // Find the matching indices in the array to update them
-        for (int j = 0; j < node_count; j++)
+        for (uint32_t j = 0; j < node_count; j++)
         {
             if (arr[j] == values.first && f_value == -1)
             {
@@ -384,32 +387,32 @@ node *build_huffman(node **arr)
                 s_value = j;
             }
         }
-        
+
         // Remove the second node and replace the first one with the parent
         arr[s_value] = NULL;
         arr[f_value] = parent;
     }
 
     // Find and return the single remaining root node
-    for (int i = 0; i < node_count; i++)
+    for (uint32_t i = 0; i < node_count; i++)
     {
         if (arr[i] != NULL)
         {
             return arr[i];
         }
     }
-    
+
     return NULL;
 }
 
 pair find_two_smallest(node **arr)
 {
     pair results;
-    
+
     results.first = NULL;
     results.seconde = NULL;
 
-    for (int i = 0; i < node_count; i++)
+    for (uint32_t i = 0; i < node_count; i++)
     {
         // Check for null
         if (arr[i] == NULL)
@@ -433,7 +436,7 @@ pair find_two_smallest(node **arr)
     return results;
 }
 
-void put_in_arr(list *l, int buffer, node **arr)
+void put_in_arr(list *l, uint32_t buffer, node **arr)
 {
     // put in arr
     arr[buffer]->letter = l->letter;
@@ -445,7 +448,7 @@ void put_in_arr(list *l, int buffer, node **arr)
 
     // Incremente
     buffer++;
-    
+
     // do next if not null
     if ((l->next != NULL) && (buffer < node_count))
     {

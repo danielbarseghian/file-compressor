@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 typedef struct node
 {
@@ -27,7 +28,7 @@ void free_arr(node *arr);
 int get_value(char *num);
 void free_tree(node *t);
 
-int node_count = 0;
+uint32_t node_count = 0;
 
 int main (int argc, char *argv[])
 {
@@ -241,15 +242,27 @@ void write_file(char **byte_arr, int arr_size, char *name, node **node_arr)
 
     // write metadata
     // The first byte is the binary value of byte_count
-    fwrite(&node_count, 1, 1, f);
+    fwrite(&node_count, sizeof(uint32_t), 1, f);
 
     for (int i = 0; i < node_count; i++)
     {
-        uint32_t byte_letter = (unsigned char) node_arr[i]->letter;
-        fwrite(&byte_letter, sizeof(uint32_t), 1, f);
+        unsigned char byte_letter = (int) node_arr[i]->letter;
+        fwrite(&byte_letter, 1, 1, f);
+        printf("writting l: ");
+        for (int j = 7; j >= 0; j--)
+        {
+            printf("%d", (byte_letter >> j) & 1);
+        }
+        printf("\n");
 
-        uint32_t byte_repetition = (unsigned char) node_arr[i]->repetition;
+        uint32_t byte_repetition = (uint32_t) node_arr[i]->repetition;
         fwrite(&byte_repetition, sizeof(uint32_t), 1, f);
+        printf("Writting r: ");
+        for (int j = 7; j >= 0; j--)
+        {
+            printf("%d", (byte_repetition >> j) & 1);
+        }
+        printf("\n");
 
         // Seek
         fseek(f, 0, SEEK_CUR);
