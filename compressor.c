@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 typedef struct node
 {
@@ -238,20 +239,21 @@ void write_file(char **byte_arr, int arr_size, char *name, node **node_arr)
         return;
     }
 
-    // Put metadata
-    
+    // write metadata
+    // The first byte is the binary value of byte_count
+    fwrite(&node_count, 1, 1, f);
+
     for (int i = 0; i < node_count; i++)
     {
-        char temp[20];
+        uint32_t byte_letter = (unsigned char) node_arr[i]->letter;
+        fwrite(&byte_letter, sizeof(uint32_t), 1, f);
 
-        snprintf(temp, 20, "%c:%i|", node_arr[i]->letter, node_arr[i]->repetition);
-
-        fwrite(temp, 1, strlen(temp), f);
+        uint32_t byte_repetition = (unsigned char) node_arr[i]->repetition;
+        fwrite(&byte_repetition, sizeof(uint32_t), 1, f);
 
         // Seek
         fseek(f, 0, SEEK_CUR);
     }
-    fwrite("\n", 1, 1, f);
 
     // Didnt respect the primary rule, never use AI to fully write code
     // Im going to learn bitwise operators and how to code it myself.
