@@ -5,4 +5,5 @@ launch.json
 tasks.json
 *.txt
 *.png
+*.bin
 test.txt
