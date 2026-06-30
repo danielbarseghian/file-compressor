@@ -2,18 +2,20 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 typedef struct list
 {
-    char letter;
-    int repetition;
+    unsigned char letter;
+    uint32_t repetition;
     struct list *next;
 } list;
 
 typedef struct node
 {
-    char letter;
-    unsigned int repetition;
+    unsigned char letter;
+    uint32_t repetition;
     struct node *right;
     struct node *left;
 } node;
@@ -24,14 +26,13 @@ typedef struct pair
     node *seconde;
 } pair;
 
-int count = 0;
-long node_count = 0;
+uint32_t node_count = 0;
 int byte_count = 0;
 int rep_length = 0;
 long after_meta = 0;
 
 void build_codes(node *root, char *buffer, int depth, char **codes);
-char *get_result(node *tree, char *byte[node_count]);
+void get_result(node *tree, char *byte[node_count], char *name);
 const char *get_filename_ext(const char *filename);
 void put_in_arr(list *l, int buffer, node **arr);
 void reverse_arr(node **arr, int len);
@@ -73,12 +74,14 @@ int main(int argc, char **argv)
     list *temp_list = malloc(sizeof(list));
     initialize_list(temp_list);
 
-    int doend = 0;
+    // First byte is always the length
+    fread(&node_count, sizeof(uint32_t), 1, f);
+    printf("count: %" PRIu32 "\n", node_count);
 
-    char letter;
-    int rep = 0;
+    unsigned char letter;
+    uint32_t rep = 0;
 
-    while (fscanf(f, "%c:%d|", &letter, &rep) == 2) 
+    for (uint32_t i = 0; i < node_count && fread(&letter, sizeof(unsigned char), 1, f) == 1 &&fread(&rep, sizeof(uint32_t), 1, f) == 1; i++)
     {
         // Put in full repetition
         rep_length += rep;
@@ -89,6 +92,7 @@ int main(int argc, char **argv)
         // Put the values
         temp->letter = letter;
         temp->repetition = rep;
+        printf("temp: %" PRIu32 "\n", rep);
 
         // Put temporary pnt to point to the front
         list *tmp_pnt = temp_list;
@@ -98,9 +102,6 @@ int main(int argc, char **argv)
 
         // Put the next to the old head
         temp_list->next = tmp_pnt;
-
-        // Incremente
-        node_count++;
     }
 
     // I cant put directly here since i can't know the count before
@@ -123,6 +124,7 @@ int main(int argc, char **argv)
 
     // Reverse array
     reverse_arr(meta_arr, node_count);
+    printf("%" PRIu32 "\n", node_count);
 
     for (int i = 0; i < node_count; i++)
     {
@@ -176,7 +178,6 @@ int main(int argc, char **argv)
     long current = ftell(fb);
 
     // get file size
-    printf("%li", current);
     fseek(fb, 0, SEEK_END);
     long end = ftell(fb);
     long fsize = end - current;
@@ -204,32 +205,14 @@ int main(int argc, char **argv)
         temp[8] = '\0';
 
         byte_arr[i] = temp;
-
-        //printf("Found: %s\n", temp);
     }
     printf("\n");
 
-    char *result = get_result(tree, byte_arr);
-
-    if (result == NULL) 
-    {
-        printf("error: result is NULL\n");
-        return 1;
-    }
+    get_result(tree, byte_arr, argv[2]);
 
     fclose(fb);
 
-    FILE *fw = fopen(argv[2], "w");
-
-    if (fw == NULL)
-    {
-        printf("error opening %s\n", argv[2]);
-        return 1;
-    }
-
-    fwrite(result, 1, strlen(result), fw);
-
-    fclose(fw);
+    printf("Successfull\n");
     return 0;
 }
 
@@ -270,15 +253,18 @@ const char *get_filename_ext(const char *filename)
     return dot + 1;
 }
 
-char *get_result(node *tree, char *byte[node_count])
+void get_result(node *tree, char *byte[node_count], char *name)
 {
-    const int bytelen = 8;
-    node *current = tree;
-    int rep_sum = 0;
+    FILE *fw = fopen(name, "wb");
+    if (fw == NULL)
+    {
+        printf("Opening write file failed");
+        return;
+    }
 
-    char *final = malloc(sizeof(char) * rep_length + 1);
-    final[0] = '\0';
-    int times = 0;
+    node *current = tree;
+
+    const int bytelen = 8;
     int byte_read = 0;
 
     // For every nodes
@@ -296,14 +282,17 @@ char *get_result(node *tree, char *byte[node_count])
             else if ((byte[i][j]) == '1')
                 current = current->right;
 
-            // if its a leaf
+            // if its a leaf or a 0 byte
             if (current->left == NULL && current->right == NULL)
             {
-                // Append letter to the last character written
-                int len = strlen(final);
-                
-                final[len] = current->letter;
-                final[len + 1] = '\0';
+                printf("writting: ");
+                for (int i = 7; i >= 0; i--)
+                {
+                    printf("%i", (current->letter >> i) & 1);
+                }
+                printf("\n");
+
+                fwrite(&current->letter, 1, 1, fw);
 
                 byte_read++;
                 current = tree; // reset
@@ -311,7 +300,7 @@ char *get_result(node *tree, char *byte[node_count])
         }
     }
 
-    return final;
+    fclose(fw);
 }
 
 void reverse_arr(node **arr, int len)
