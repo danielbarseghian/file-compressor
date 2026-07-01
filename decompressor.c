@@ -188,13 +188,6 @@ int main(int argc, char **argv)
 
     get_result(tree, byte_arr, argv[2]);
 
-    fclose(fb);
-
-    for (int i = 0; i < node_count; i++)
-    {
-        free(meta_arr[i]);
-    }
-
     free(meta_arr);
 
     for (int i = 0; i < fsize; i++)
