@@ -31,16 +31,17 @@ int byte_count = 0;
 int rep_length = 0;
 long after_meta = 0;
 
-void build_codes(node *root, char *buffer, int depth, char **codes);
 void get_result(node *tree, char *byte[node_count], char *name);
 const char *get_filename_ext(const char *filename);
 void put_in_arr(list *l, int buffer, node **arr);
 void reverse_arr(node **arr, int len);
+void free_temp_list(list *temp_list);
 pair find_two_smallest(node **arr);
 node *build_huffman(node **arr);
 void initialize_list(list *l);
 void free_list(list *first);
-void print_all(list *l);\
+void free_tree(node *t);
+void print_all(list *l);
 
 int main(int argc, char **argv)
 {
@@ -69,7 +70,6 @@ int main(int argc, char **argv)
 
     // Put it in a char of size of one byte
     const int BYTELEN = 8;
-    char *buffer = malloc(sizeof(char) * BYTELEN);
 
     list *temp_list = malloc(sizeof(list));
     initialize_list(temp_list);
@@ -122,6 +122,8 @@ int main(int argc, char **argv)
     unsigned int b = 0;
     put_in_arr(temp_list, b, meta_arr);
 
+    free_temp_list(temp_list);
+
     // Reverse array
     reverse_arr(meta_arr, node_count);
     printf("%" PRIu32 "\n", node_count);
@@ -143,31 +145,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    char *bfr = malloc(sizeof(char) * 32 + 1); // in total its 257
-    if (bfr == NULL)
-    {
-        printf("error while malloc\n");
-        return 1;
-    }
-
-    int depth = 0;
-    char **codes = calloc(256, sizeof(char *));
-    if (codes == NULL)
-    {
-        printf("error while calloc\n");
-        return 1;
-    }
-
-    build_codes(tree, bfr, depth, codes);
-
-    for (int i = 0; i < 256; i++)
-    {
-        if (codes[i] != NULL)
-        {
-            printf("%c: %s\n", i, codes[i]);
-        }
-    }
-
     fclose(f);
 
     // Now reopen the file in byte
@@ -184,7 +161,8 @@ int main(int argc, char **argv)
     fseek(fb, after_meta, SEEK_SET);
 
     char *byte_arr[fsize];
-    unsigned char byte;
+
+    unsigned char byte = 0;
 
     // read
     for (int i = 0; fread(&byte, 1, 1, fb) == 1; i++)
@@ -212,35 +190,47 @@ int main(int argc, char **argv)
 
     fclose(fb);
 
+    for (int i = 0; i < node_count; i++)
+    {
+        free(meta_arr[i]);
+    }
+
+    free(meta_arr);
+
+    for (int i = 0; i < fsize; i++)
+    {
+        free(byte_arr[i]);
+    }
+
+    free_tree(tree);
+
     printf("Successfull\n");
+
     return 0;
 }
 
-void build_codes(node *root, char *buffer, int depth, char **codes)
+void free_tree(node *t)
 {
-    if (!root) return;
-
-    // LEAF
-    if (root->left == NULL && root->right == NULL)
-    {
-        buffer[depth] = '\0';  // CRITICAL FIX
-        codes[(unsigned char)root->letter] = strdup(buffer);
+    if (t == NULL)
         return;
+
+    if (t->left)
+        free_tree(t->left);
+
+    if (t->right)
+        free_tree(t->right);
+
+    free(t);
+}
+
+void free_temp_list(list *temp_list)
+{
+    if (temp_list->next != NULL)
+    {
+        free_temp_list(temp_list->next);
     }
 
-    // LEFT = 0
-    if (root->left)
-    {
-        buffer[depth] = '0';
-        build_codes(root->left, buffer, depth + 1, codes);
-    }
-
-    // RIGHT = 1
-    if (root->right)
-    {
-        buffer[depth] = '1';
-        build_codes(root->right, buffer, depth + 1, codes);
-    }
+    free(temp_list);
 }
 
 const char *get_filename_ext(const char *filename)
