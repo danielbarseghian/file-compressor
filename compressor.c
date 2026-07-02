@@ -18,7 +18,7 @@ typedef struct pair
     node *seconde;
 } pair;
 
-void write_file(char **byte_arr, int arr_size, char *name, node **node_arr);
+void write_file(unsigned char **byte_arr, int arr_size, char *name, node **node_arr);
 void build_codes(node *root, char *buffer, int depth, char **codes);
 const char *get_filename_ext(const char *filename);
 pair find_two_smallest(node *f_pnt[256]);
@@ -61,7 +61,7 @@ int main (int argc, char *argv[])
     }
 
     fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
+    long long fsize = ftell(f);
     if (fsize == 0)
     {
         printf("File is empty!\n");
@@ -135,7 +135,7 @@ int main (int argc, char *argv[])
         return 1;
     }
 
-    char *bfr = malloc(sizeof(char) * 32 + 1); // in total its 257
+    char *bfr = malloc(257); // in total its 257
     if (bfr == NULL)
     {
         printf("error while malloc\n");
@@ -160,12 +160,17 @@ int main (int argc, char *argv[])
         }
     }
     
-    char *byte_arr[fsize];
+    printf("c, %lli\n", fsize); 
+    unsigned char *byte_arr = mmap(NULL, fsize, PROT_READ, MAP_PRIVATE, fb, 0);
+    printf("a\n");
 
     for (int i = 0; i < fsize; i++)
     {
+        printf("trying to access %i\n", (unsigned char)buffer[i]);
         byte_arr[i] = codes[(unsigned char)buffer[i]];
     }
+
+    printf("writting\n");
 
     write_file(byte_arr, fsize, argv[2], cpy_arr);
 
@@ -229,7 +234,7 @@ void free_arr(node *arr)
     free(arr);
 }
 
-void write_file(char **byte_arr, int arr_size, char *name, node **node_arr)
+void write_file(unsigned char **byte_arr, int arr_size, char *name, node **node_arr)
 {
     int meta_byte_count = 0;
 
