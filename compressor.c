@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <sys/mman.h>
+#include <ctype.h>
 
 typedef struct node
 {
@@ -157,7 +158,7 @@ int main (int argc, char *argv[])
     {
         if (codes[i] != NULL)
         {
-            printf("%i, %c: %s\n", i, i, codes[i]);
+            //printf("%i, %c: %s\n", i, i, codes[i]);
         }
     }
     
@@ -166,7 +167,7 @@ int main (int argc, char *argv[])
 
     for (int i = 0; i < fsize; i++)
     {
-        printf("trying to access '%c' (%u)\n",
+        printf("trying to access '%c' (%c)\n",
        (unsigned char)buffer[i],
        (unsigned char)buffer[i]);
         byte_arr[i] = codes[(unsigned int)buffer[i]];
@@ -342,8 +343,15 @@ void build_codes(node *root, char *buffer, int depth, char **codes)
     // LEAF
     if (root->left == NULL && root->right == NULL)
     {
-        buffer[depth] = '\0';  // CRITICAL FIX
-        codes[(unsigned char)root->letter] = strdup(buffer);
+        buffer[depth] = '\0';
+        unsigned int index = 0;
+        if (isalpha(root->letter))
+        {
+            index = (unsigned int) root->letter;
+        }
+        
+        printf("putting %s in %i\n", buffer, index);
+        codes[index] = strdup(buffer);
         return;
     }
 
