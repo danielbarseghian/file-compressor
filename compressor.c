@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <sys/mman.h>
 
 typedef struct node
 {
@@ -156,18 +157,19 @@ int main (int argc, char *argv[])
     {
         if (codes[i] != NULL)
         {
-            printf("%c: %s\n", i, codes[i]);
+            printf("%i, %c: %s\n", i, i, codes[i]);
         }
     }
     
-    printf("c, %lli\n", fsize); 
-    unsigned char *byte_arr = mmap(NULL, fsize, PROT_READ, MAP_PRIVATE, fb, 0);
-    printf("a\n");
+    unsigned char **byte_arr = mmap(NULL, fsize * sizeof(unsigned char *), PROT_READ | PROT_WRITE,
+    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     for (int i = 0; i < fsize; i++)
     {
-        printf("trying to access %i\n", (unsigned char)buffer[i]);
-        byte_arr[i] = codes[(unsigned char)buffer[i]];
+        printf("trying to access '%c' (%u)\n",
+       (unsigned char)buffer[i],
+       (unsigned char)buffer[i]);
+        byte_arr[i] = codes[(unsigned int)buffer[i]];
     }
 
     printf("writting\n");
