@@ -1,10 +1,12 @@
 #include <stdio.h>
+#include <ctype.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <inttypes.h>
+#include <unistd.h>
+#include <sys/stat.h>
 #include <sys/mman.h>
-#include <ctype.h>
 
 typedef struct node
 {
@@ -20,8 +22,8 @@ typedef struct pair
     node *seconde;
 } pair;
 
-void write_file(unsigned char **byte_arr, int arr_size, char *name, node **node_arr);
-void build_codes(node *root, char *buffer, int depth, char **codes);
+void write_file(unsigned char *m, unsigned char **codes, int arr_size, char *name, node **node_arr);
+void build_codes(node *root, char *buffer, int depth, unsigned char **codes);
 const char *get_filename_ext(const char *filename);
 pair find_two_smallest(node *f_pnt[256]);
 node *create_node(char c, int freq);
@@ -35,9 +37,6 @@ uint32_t node_count = 0;
 int main (int argc, char *argv[])
 {
     fflush(stdout);
-    
-    // Create an array of frequencies and initialize it to 0
-    int frequencies[256] = {0};
 
     if (argc != 3)
     {
@@ -54,35 +53,46 @@ int main (int argc, char *argv[])
         return 1;
     }
 
-    // Read file
-    FILE *f = fopen(argv[1], "rb");
-    if (f == NULL)
+    int f = open(argv[1], O_RDONLY);
+    if (f == -1)
     {
-        printf("Error: Could not open file %s\n", argv[1]);
+        printf("open failed on %s\n", argv[1]);
         return 1;
     }
 
-    fseek(f, 0, SEEK_END);
-    long long fsize = ftell(f);
+    struct stat buffer;
+
+    int stat = fstat(f, &buffer);
+    if (stat == -1)
+    {
+        printf("fstat failed\n");
+        return 1;
+    }
+
+    long long fsize = buffer.st_size;
+
+    printf("size: %lli\n", fsize);
+
     if (fsize == 0)
     {
-        printf("File is empty!\n");
-        fclose(f);
-        return 0;
+        printf("file is empty\n");
+        return 1;
     }
-    fseek(f, 0, SEEK_SET);  // same as rewind(f)
 
-    char *buffer = malloc(fsize + 1);
-    fread(buffer, fsize, 1, f);
-    fclose(f);
+    unsigned char *m = mmap(NULL, fsize, PROT_READ, MAP_PRIVATE, f, 0);
+    if (m == MAP_FAILED)
+    {
+        printf("mmap failled\n");
+        return 1;
+    }
 
-    // Put the last value as \0
-    buffer[fsize] = '\0';
+    // Create an array of frequencies and initialize it to 0
+    long long frequencies[256] = {0};
 
     // loop until Null
     for (long i = 0; i < fsize; i++)
     {
-        frequencies[(unsigned char) buffer[i]]++;
+        frequencies[m[i]]++;
     }
 
     // Make a list of pointer to the nodes
@@ -126,8 +136,6 @@ int main (int argc, char *argv[])
 
         printf("%c:%i||", node_arr[i]->letter, node_arr[i]->repetition);
     }
-    printf("%i\n", node_count);
-    printf("\n");
     
     node *t = build_huffman(node_arr);
 
@@ -145,7 +153,7 @@ int main (int argc, char *argv[])
     }
 
     int depth = 0;
-    char **codes = calloc(256, sizeof(char *));
+    unsigned char **codes = calloc(256, sizeof(char *));
     if (codes == NULL)
     {
         printf("error while calloc\n");
@@ -158,24 +166,11 @@ int main (int argc, char *argv[])
     {
         if (codes[i] != NULL)
         {
-            //printf("%i, %c: %s\n", i, i, codes[i]);
+            printf("%i, %c: %s\n", i, i, codes[i]);
         }
     }
-    
-    unsigned char **byte_arr = mmap(NULL, fsize * sizeof(unsigned char *), PROT_READ | PROT_WRITE,
-    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
-    for (int i = 0; i < fsize; i++)
-    {
-        printf("trying to access '%c' (%c)\n",
-       (unsigned char)buffer[i],
-       (unsigned char)buffer[i]);
-        byte_arr[i] = codes[(unsigned int)buffer[i]];
-    }
-
-    printf("writting\n");
-
-    write_file(byte_arr, fsize, argv[2], cpy_arr);
+    write_file(m, codes, fsize, argv[2], cpy_arr);
 
     for (int i = 0; i < node_count; i++)
     {
@@ -189,7 +184,7 @@ int main (int argc, char *argv[])
         free(codes[i]);
     }
     free(codes);
-    free(buffer);
+    munmap(m, fsize);
     free(frequencies_pnt);
     free(node_arr);
     free(cpy_arr);
@@ -237,7 +232,7 @@ void free_arr(node *arr)
     free(arr);
 }
 
-void write_file(unsigned char **byte_arr, int arr_size, char *name, node **node_arr)
+void write_file(unsigned char *m, unsigned char **codes, int arr_size, char *name, node **node_arr)
 {
     int meta_byte_count = 0;
 
@@ -256,21 +251,9 @@ void write_file(unsigned char **byte_arr, int arr_size, char *name, node **node_
     {
         unsigned char byte_letter = (int) node_arr[i]->letter;
         fwrite(&byte_letter, 1, 1, f);
-        printf("writting l: ");
-        for (int j = 7; j >= 0; j--)
-        {
-            printf("%d", (byte_letter >> j) & 1);
-        }
-        printf("\n");
 
         uint32_t byte_repetition = (uint32_t) node_arr[i]->repetition;
         fwrite(&byte_repetition, sizeof(uint32_t), 1, f);
-        printf("Writting r: ");
-        for (int j = 7; j >= 0; j--)
-        {
-            printf("%d", (byte_repetition >> j) & 1);
-        }
-        printf("\n");
 
         // Seek
         fseek(f, 0, SEEK_CUR);
@@ -287,14 +270,17 @@ void write_file(unsigned char **byte_arr, int arr_size, char *name, node **node_
     // For every arrays
     while (arr_index < arr_size)
     {
+        printf("Write\n");
+        char *code = codes[(unsigned char) m[arr_index]];
         // For every letters
-        for (int i = 0, len = strlen(byte_arr[arr_index]); i < len; i++)
+        for (int i = 0, len = strlen(code); i < len; i++)
         {
+            printf("rom\n");
             // left shift
             final <<= 1;
 
             // Append if there is the number
-            if (byte_arr[arr_index][i] == '1')
+            if (code[i] == '1')
                 final |= 1;
 
             fcount++;
@@ -336,7 +322,7 @@ void write_file(unsigned char **byte_arr, int arr_size, char *name, node **node_
     fclose(f);
 }
 
-void build_codes(node *root, char *buffer, int depth, char **codes)
+void build_codes(node *root, char *buffer, int depth, unsigned char **codes)
 {
     if (!root) return;
 
@@ -345,12 +331,8 @@ void build_codes(node *root, char *buffer, int depth, char **codes)
     {
         buffer[depth] = '\0';
         unsigned int index = 0;
-        if (isalpha(root->letter))
-        {
-            index = (unsigned int) root->letter;
-        }
+        index = (unsigned int) root->letter;
         
-        printf("putting %s in %i\n", buffer, index);
         codes[index] = strdup(buffer);
         return;
     }
