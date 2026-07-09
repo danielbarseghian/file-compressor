@@ -134,7 +134,11 @@ int main (int argc, char *argv[])
         cpy_arr[i] = malloc(sizeof(node));
         *cpy_arr[i] = *node_arr[i];
 
-        printf("%c:%i||", node_arr[i]->letter, node_arr[i]->repetition);
+        for (int j = 7; j >= 0; j--)
+        {
+            printf("%d", (node_arr[i]->letter >> j) & 1);
+        }
+        printf(":%i||", node_arr[i]->letter, node_arr[i]->repetition);
     }
     
     node *t = build_huffman(node_arr);
@@ -160,7 +164,9 @@ int main (int argc, char *argv[])
         return 1;
     }
 
+    printf("bef\n");
     build_codes(t, bfr, depth, codes);
+    printf("built\n");
 
     for (int i = 0; i < 256; i++)
     {
@@ -188,6 +194,8 @@ int main (int argc, char *argv[])
     free(frequencies_pnt);
     free(node_arr);
     free(cpy_arr);
+
+    close(f);
 
     printf("Successful\n");
 }
@@ -329,10 +337,12 @@ void build_codes(node *root, char *buffer, int depth, unsigned char **codes)
     // LEAF
     if (root->left == NULL && root->right == NULL)
     {
+        printf("\nleaf\n");
         buffer[depth] = '\0';
         unsigned int index = 0;
         index = (unsigned int) root->letter;
         
+        printf("Code of index %i is equal to %s\n", index, buffer);
         codes[index] = strdup(buffer);
         return;
     }
@@ -340,6 +350,7 @@ void build_codes(node *root, char *buffer, int depth, unsigned char **codes)
     // LEFT = 0
     if (root->left)
     {
+        printf("0");
         buffer[depth] = '0';
         build_codes(root->left, buffer, depth + 1, codes);
     }
@@ -347,6 +358,7 @@ void build_codes(node *root, char *buffer, int depth, unsigned char **codes)
     // RIGHT = 1
     if (root->right)
     {
+        printf("1");
         buffer[depth] = '1';
         build_codes(root->right, buffer, depth + 1, codes);
     }
@@ -386,6 +398,7 @@ node *build_huffman(node **arr)
             {
                 f_value = j;
             }
+
             if (arr[j] == values.seconde && s_value == -1)
             {
                 s_value = j;

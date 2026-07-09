@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -185,6 +185,8 @@ int main(int argc, char **argv)
         byte_arr[i] = temp;
     }
     printf("\n");
+
+    fclose(fb);
 
     get_result(tree, byte_arr, argv[2]);
 
