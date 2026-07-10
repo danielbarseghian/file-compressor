@@ -10,7 +10,7 @@
 
 typedef struct node
 {
-    char letter;
+    unsigned char letter;
     int repetition;
     struct node *right;
     struct node *left;
@@ -383,7 +383,7 @@ node *build_huffman(node **arr)
         // Create a new parent node
         node *parent = malloc(sizeof(node));
         parent->repetition = sum;
-        parent->letter = '\0';
+        parent->letter = 0;
 
         parent->right = values.first;
         parent->left = values.seconde;
