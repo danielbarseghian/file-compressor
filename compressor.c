@@ -22,7 +22,7 @@ typedef struct pair
     node *seconde;
 } pair;
 
-void write_file(unsigned char *m, unsigned char **codes, int arr_size, char *name, node **node_arr);
+void write_file(unsigned char *m, unsigned char **codes, long long arr_size, char *name, node **node_arr);
 void build_codes(node *root, char *buffer, int depth, unsigned char **codes);
 const char *get_filename_ext(const char *filename);
 pair find_two_smallest(node *f_pnt[256]);
@@ -240,7 +240,7 @@ void free_arr(node *arr)
     free(arr);
 }
 
-void write_file(unsigned char *m, unsigned char **codes, int arr_size, char *name, node **node_arr)
+void write_file(unsigned char *m, unsigned char **codes, long long arr_size, char *name, node **node_arr)
 {
     int meta_byte_count = 0;
 
@@ -275,6 +275,7 @@ void write_file(unsigned char *m, unsigned char **codes, int arr_size, char *nam
     int fcount = 0;
     int arr_index = 0;
 
+    printf("if?\n");
     // For every arrays
     while (arr_index < arr_size)
     {
