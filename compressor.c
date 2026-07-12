@@ -11,7 +11,7 @@
 typedef struct node
 {
     unsigned char letter;
-    int repetition;
+    long long repetition;
     struct node *right;
     struct node *left;
 } node;
@@ -164,16 +164,13 @@ int main (int argc, char *argv[])
         return 1;
     }
 
-    printf("bef\n");
-    build_codes(t, bfr, depth, codes);
-    printf("built\n");
-
-    for (int i = 0; i < 256; i++)
+    if (node_count == 1)
     {
-        if (codes[i] != NULL)
-        {
-            printf("%i, %c: %s\n", i, i, codes[i]);
-        }
+        codes[node_arr[0]->letter] = strdup("0");
+    }
+    else
+    {
+        build_codes(t, bfr, depth, codes);
     }
 
     write_file(m, codes, fsize, argv[2], cpy_arr);
@@ -273,18 +270,15 @@ void write_file(unsigned char *m, unsigned char **codes, long long arr_size, cha
     // Point to final so we can change it when needed
     unsigned char final = 0;
     int fcount = 0;
-    int arr_index = 0;
+    long long arr_index = 0;
 
-    printf("if?\n");
     // For every arrays
     while (arr_index < arr_size)
     {
-        printf("Write\n");
         char *code = codes[(unsigned char) m[arr_index]];
         // For every letters
         for (int i = 0, len = strlen(code); i < len; i++)
         {
-            printf("rom\n");
             // left shift
             final <<= 1;
 
@@ -297,13 +291,6 @@ void write_file(unsigned char *m, unsigned char **codes, long long arr_size, cha
             // Reset both
             if (fcount >= 8)
             {
-                printf("writing: ");
-                for (int i = 7; i >= 0; i--)
-                {
-                    printf("%d", (final >> i) & 1);
-                }
-                printf("\n");
-
                 // write
                 fwrite(&final, 1, 1, f);
 
@@ -324,6 +311,7 @@ void write_file(unsigned char *m, unsigned char **codes, long long arr_size, cha
     // write remaining
     if (fcount > 0)
     {
+        printf("remaingings\n");
         final <<= (8 - fcount);
         fwrite(&final, 1, 1, f);
     }
@@ -338,12 +326,10 @@ void build_codes(node *root, char *buffer, int depth, unsigned char **codes)
     // LEAF
     if (root->left == NULL && root->right == NULL)
     {
-        printf("\nleaf\n");
         buffer[depth] = '\0';
         unsigned int index = 0;
         index = (unsigned int) root->letter;
         
-        printf("Code of index %i is equal to %s\n", index, buffer);
         codes[index] = strdup(buffer);
         return;
     }
@@ -351,7 +337,6 @@ void build_codes(node *root, char *buffer, int depth, unsigned char **codes)
     // LEFT = 0
     if (root->left)
     {
-        printf("0");
         buffer[depth] = '0';
         build_codes(root->left, buffer, depth + 1, codes);
     }
@@ -359,7 +344,6 @@ void build_codes(node *root, char *buffer, int depth, unsigned char **codes)
     // RIGHT = 1
     if (root->right)
     {
-        printf("1");
         buffer[depth] = '1';
         build_codes(root->right, buffer, depth + 1, codes);
     }

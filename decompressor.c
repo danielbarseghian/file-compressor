@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <ctype.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <inttypes.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 typedef struct list
 {
@@ -157,34 +161,39 @@ int main(int argc, char **argv)
     // get file size
     fseek(fb, 0, SEEK_END);
     long end = ftell(fb);
-    long fsize = end - current;
     fseek(fb, after_meta, SEEK_SET);
+
+    int fd = fileno(fb);
+    char *filedata = mmap(NULL, end, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (filedata == MAP_FAILED)
+    {
+        fclose(fb);
+        printf("Map failed for filedata");
+        return 1;
+    }
+
+    unsigned char *payload = (unsigned char *)(filedata + after_meta); // payload of [0] is the first byte after the metadata
+    long fsize = end - after_meta; // Get the size
 
     char *byte_arr[fsize];
 
-    unsigned char byte = 0;
-
-    // read
-    for (int i = 0; fread(&byte, 1, 1, fb) == 1; i++)
+    for (long i = 0; i < fsize; i++)
     {
-        char *temp = malloc(9); // 8 bits + null terminator
+        char *temp = malloc(9);
 
-        printf("Found: ");
-        // Build bit string for each byte
-        for (int j = 7; j >= 0; j--)
+        unsigned char byte = payload[i];
+
+        for (int j = 7; j >= 0; j--) 
         {
             int bit = (byte >> j) & 1;
-
-            printf("%i", bit);
-
             temp[7 - j] = '0' + bit;
         }
-        printf("\n");
-        temp[8] = '\0';
 
+        temp[8] = '\0';
         byte_arr[i] = temp;
     }
-    printf("\n");
+
+    unsigned char byte = 0;
 
     fclose(fb);
 
@@ -198,6 +207,7 @@ int main(int argc, char **argv)
     }
 
     free_tree(tree);
+    munmap(filedata, end);
 
     printf("Successfull\n");
 
