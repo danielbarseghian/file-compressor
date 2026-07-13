@@ -6,4 +6,5 @@ tasks.json
 *.txt
 *.png
 *.bin
+*.iso
 test.txt

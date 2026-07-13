@@ -35,7 +35,7 @@ long long byte_count = 0;
 long long rep_length = 0;
 long after_meta = 0;
 
-void get_result(node *tree, unsigned char *payload, char *name);
+void get_result(node *tree, unsigned char *payload, char *name, long long fsize);
 const char *get_filename_ext(const char *filename);
 void put_in_arr(list *l, int buffer, node **arr);
 void reverse_arr(node **arr, int len);
@@ -160,7 +160,7 @@ int main(int argc, char **argv)
 
     // get file size
     fseek(fb, 0, SEEK_END);
-    long end = ftell(fb);
+    long long end = ftell(fb);
     fseek(fb, after_meta, SEEK_SET);
 
     int fd = fileno(fb);
@@ -178,7 +178,8 @@ int main(int argc, char **argv)
 
     fclose(fb);
 
-    get_result(tree, payload, argv[2]);
+    get_result(tree, payload, argv[2], (end - after_meta));
+    printf("got\n");
 
     free(meta_arr);
 
@@ -224,7 +225,7 @@ const char *get_filename_ext(const char *filename)
     return dot + 1;
 }
 
-void get_result(node *tree, unsigned char *payload, char *name)
+void get_result(node *tree, unsigned char *payload, char *name, long long fsize)
 {
     printf("opened\n");
     FILE *fw = fopen(name, "wb");
@@ -237,11 +238,10 @@ void get_result(node *tree, unsigned char *payload, char *name)
     node *current = tree;
 
     const int bytelen = 8;
-    int byte_read = 0;
+    long long byte_read = 0;
 
-    printf("rep : %lli\n", rep_length);
     // For every nodes
-    for (int i = 0; byte_read < rep_length; i++)
+    for (long long i = 0; byte_read < rep_length && i < fsize; i++)
     {
         // For every letters in the byte
         for (int j = 0; j < bytelen; j++)
@@ -260,13 +260,6 @@ void get_result(node *tree, unsigned char *payload, char *name)
             // if its a leaf or a 0 byte
             if (current->left == NULL && current->right == NULL)
             {
-                printf("writting: ");
-                for (int i = 7; i >= 0; i--)
-                {
-                    printf("%d", bit);
-                }
-                printf("\n");
-
                 fwrite(&current->letter, 1, 1, fw);
 
                 byte_read++;
