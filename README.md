@@ -94,13 +94,6 @@ make decompressor
 
 > ⚠️ The input and output files must use the same file extension.
 
-## How it works
-The code uses an algorithm called Huffman coding, a lossless compression algorithm. It builds a tree and creates codes based on the frequency of each character,if 'a' is the most repeated character, its code will be the shortest, to save space. This continues until all the codes have been written. There is also the metadata necessary to recreate the tree in the file for the decompressor.
-
 ## Issues
 
 If you encounter ANY issues, please report them in the [Issues](../../issues) tab.
-
-## License
-
-<!-- e.g. This project is licensed under the MIT License — see the LICENSE file for details. -->
