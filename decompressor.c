@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     }
 
     // read the metadata
-    FILE *f = fopen(argv[1], "r");
+    FILE *f = fopen(argv[1], "rb");
     if (f == NULL)
     {
         printf("Error while opening compressed file\n");
@@ -312,9 +312,7 @@ node *build_huffman(node **arr)
 
         // If there is no second node, the tree is fully built
         if (values.seconde == NULL)
-        {
-            break; 
-        }
+            break;
         
         int sum = values.first->repetition + values.seconde->repetition;
 
