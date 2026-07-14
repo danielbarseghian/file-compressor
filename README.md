@@ -95,8 +95,7 @@ make decompressor
 > ⚠️ The input and output files must use the same file extension.
 
 ## How it works
-
-The Huffman algorithm builds a binary tree based on how often each byte appears in the input file. Bytes that occur more frequently are given shorter binary codes, and bytes that occur less frequently are given longer ones. This produces a compressed representation of the file with no loss of information — the original file can always be perfectly reconstructed during decompression.
+The code uses an algorithm called Huffman coding, a lossless compression algorithm. It builds a tree and creates codes based on the frequency of each character,if 'a' is the most repeated character, its code will be the shortest, to save space. This continues until all the codes have been written. There is also the metadata necessary to recreate the tree in the file for the decompressor.
 
 ## Issues
 
