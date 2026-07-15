@@ -7,11 +7,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <stdint.h>
 
 typedef struct node
 {
     unsigned char letter;
-    long long repetition;
+    uint32_t repetition;
     struct node *right;
     struct node *left;
 } node;
@@ -38,18 +39,9 @@ int main (int argc, char *argv[])
 {
     fflush(stdout);
 
-    if (argc != 3)
+    if (argc != 2)
     {
-        printf("usage: ./compressor file1 file2\n");
-        return 1;
-    }
-
-    // Get the first file extension
-    const char *first = get_filename_ext(argv[1]);
-    const char *second = get_filename_ext(argv[2]);
-    if (strcmp(first, second) != 0)
-    {
-        printf("extensions must match\n");
+        printf("usage: ./compressor file1\n");
         return 1;
     }
 
@@ -173,7 +165,16 @@ int main (int argc, char *argv[])
         build_codes(t, bfr, depth, codes);
     }
 
-    write_file(m, codes, fsize, argv[2], cpy_arr);
+    // Get the first file extension
+    const char *first = get_filename_ext(argv[1]);
+
+    size_t size = strlen(argv[1]) + 6; // .huff + \0 = 6
+
+    char *final_name = malloc(strlen(argv[1]) + 6); // +5 for .huff + \0
+
+    snprintf(final_name, size, "output.%s.huff", first);
+
+    write_file(m, codes, fsize, final_name, cpy_arr);
 
     for (int i = 0; i < node_count; i++)
     {

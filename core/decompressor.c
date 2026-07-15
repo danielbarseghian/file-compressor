@@ -35,7 +35,7 @@ long long byte_count = 0;
 long long rep_length = 0;
 long after_meta = 0;
 
-void get_result(node *tree, unsigned char *payload, char *name, long long fsize);
+int get_result(node *tree, unsigned char *payload, char *name, long long fsize);
 const char *get_filename_ext(const char *filename);
 void put_in_arr(list *l, int buffer, node **arr);
 void reverse_arr(node **arr, int len);
@@ -49,18 +49,17 @@ void print_all(list *l);
 
 int main(int argc, char **argv)
 {
-    if (argc != 3)
+    if (argc != 2)
     {
-        printf("Usage: ./decompressor compressed decompressed\n");
+        printf("Usage: ./decompressor compressed\n");
         return 1;
     }
 
     // Get the first file extension
     const char *first = get_filename_ext(argv[1]);
-    const char *second = get_filename_ext(argv[2]);
-    if (strcmp(first, second) != 0)
+    if (strcmp(first, "huff"))
     {
-        printf("extensions must match\n");
+        printf("has to be .huff\n");
         return 1;
     }
 
@@ -168,18 +167,35 @@ int main(int argc, char **argv)
     if (filedata == MAP_FAILED)
     {
         fclose(fb);
-        printf("Map failed for filedata");
+        printf("Map failed for filedata\n");
         return 1;
     }
 
     unsigned char *payload = (unsigned char *)(filedata + after_meta); // payload of [0] is the first byte after the metadata
 
-    unsigned char byte = 0;
-
     fclose(fb);
 
-    get_result(tree, payload, argv[2], (end - after_meta));
-    printf("got\n");
+    char *final = malloc(sizeof(argv[1]));
+    if (final == NULL)
+    {
+        printf("malloc failed\n");
+        return 1;
+    }
+
+    strcpy(final, argv[1]);
+
+    char *ext = strstr(final, ".huff"); // find where .huff start
+    if (ext != NULL)
+    {
+        *ext = '\0'; // cut the string 
+    }
+
+    int succ = get_result(tree, payload, final, (end - after_meta));
+    if (succ == 1)
+    {
+        printf("error while writting to file\n");
+        return 1;
+    }
 
     free(meta_arr);
 
@@ -225,14 +241,13 @@ const char *get_filename_ext(const char *filename)
     return dot + 1;
 }
 
-void get_result(node *tree, unsigned char *payload, char *name, long long fsize)
+int get_result(node *tree, unsigned char *payload, char *name, long long fsize)
 {
-    printf("opened\n");
     FILE *fw = fopen(name, "wb");
     if (fw == NULL)
     {
-        printf("Opening write file failed");
-        return;
+        printf("Opening write file failed\n");
+        return 1;
     }
 
     node *current = tree;
@@ -269,6 +284,7 @@ void get_result(node *tree, unsigned char *payload, char *name, long long fsize)
     }
 
     fclose(fw);
+    return 0;
 }
 
 void reverse_arr(node **arr, int len)
