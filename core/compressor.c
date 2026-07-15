@@ -138,7 +138,7 @@ int main (int argc, char *argv[])
         {
             printf("%d", (node_arr[i]->letter >> j) & 1);
         }
-        printf(":%i||", node_arr[i]->letter, node_arr[i]->repetition);
+        printf(":%i||", node_arr[i]->repetition);
     }
     
     node *t = build_huffman(node_arr);
