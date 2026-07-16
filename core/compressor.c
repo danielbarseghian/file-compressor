@@ -23,7 +23,7 @@ typedef struct pair
     node *seconde;
 } pair;
 
-void write_file(unsigned char *m, unsigned char **codes, long long arr_size, char *name, node **node_arr);
+void write_file(int input_fd, unsigned char **codes, long long arr_size, char *name, node **node_arr);
 void build_codes(node *root, char *buffer, int depth, unsigned char **codes);
 const char *get_filename_ext(const char *filename);
 pair find_two_smallest(node *f_pnt[256]);
@@ -71,21 +71,23 @@ int main (int argc, char *argv[])
         return 1;
     }
 
-    unsigned char *m = mmap(NULL, fsize, PROT_READ, MAP_PRIVATE, f, 0);
-    if (m == MAP_FAILED)
-    {
-        printf("mmap failled\n");
-        return 1;
-    }
+    #define CHUNK_SIZE 65536
+    unsigned char bff[CHUNK_SIZE];
 
-    // Create an array of frequencies and initialize it to 0
     long long frequencies[256] = {0};
+    ssize_t bytesRead;
 
-    // loop until Null
-    for (long i = 0; i < fsize; i++)
+    // 2. Stream the file in chunks to calculate frequencies
+    while ((bytesRead = read(f, bff, CHUNK_SIZE)) > 0)
     {
-        frequencies[m[i]]++;
+        for (ssize_t i = 0; i < bytesRead; i++)
+        {
+            frequencies[bff[i]]++;
+        }
     }
+
+    // 3. Reset the file descriptor to the beginning for the second pass
+    lseek(f, 0, SEEK_SET);
 
     // Make a list of pointer to the nodes
     node **frequencies_pnt = malloc(sizeof(node*) * 256);
@@ -168,13 +170,13 @@ int main (int argc, char *argv[])
     // Get the first file extension
     const char *first = get_filename_ext(argv[1]);
 
-    size_t size = strlen(argv[1]) + 6; // .huff + \0 = 6
+    size_t size = strlen("output.") + strlen(first) + strlen(".huff") + 1; // output. + current extension + .huff
 
     char *final_name = malloc(strlen(argv[1]) + 6); // +5 for .huff + \0
 
     snprintf(final_name, size, "output.%s.huff", first);
 
-    write_file(m, codes, fsize, final_name, cpy_arr);
+    write_file(f, codes, fsize, final_name, cpy_arr);
 
     for (int i = 0; i < node_count; i++)
     {
@@ -188,7 +190,6 @@ int main (int argc, char *argv[])
         free(codes[i]);
     }
     free(codes);
-    munmap(m, fsize);
     free(frequencies_pnt);
     free(node_arr);
     free(cpy_arr);
@@ -238,86 +239,48 @@ void free_arr(node *arr)
     free(arr);
 }
 
-void write_file(unsigned char *m, unsigned char **codes, long long arr_size, char *name, node **node_arr)
+void write_file(int input_fd, unsigned char **codes, long long total_fsize, char *name, node **node_arr)
 {
-    int meta_byte_count = 0;
+    FILE *f_out = fopen(name, "wb");
 
-    FILE *f = fopen(name, "wb");
-    if (f == NULL)
-    {
-        printf("open fail");
-        return;
-    }
-
-    // write metadata
-    // The first byte is the binary value of byte_count
-    fwrite(&node_count, sizeof(uint32_t), 1, f);
-
-    for (int i = 0; i < node_count; i++)
-    {
-        unsigned char byte_letter = (int) node_arr[i]->letter;
-        fwrite(&byte_letter, 1, 1, f);
-
-        uint32_t byte_repetition = (uint32_t) node_arr[i]->repetition;
-        fwrite(&byte_repetition, sizeof(uint32_t), 1, f);
-
-        // Seek
-        fseek(f, 0, SEEK_CUR);
-    }
-
-    // Didnt respect the primary rule, never use AI to fully write code
-    // Im going to learn bitwise operators and how to code it myself.
-
-    // Point to final so we can change it when needed
+    unsigned char buffer[65536];
     unsigned char final = 0;
     int fcount = 0;
-    long long arr_index = 0;
+    long long bytes_processed = 0;
 
-    // For every arrays
-    while (arr_index < arr_size)
+    // Reset file descriptor to start
+    lseek(input_fd, 0, SEEK_SET);
+
+    ssize_t bytesRead;
+    while ((bytesRead = read(input_fd, buffer, sizeof(buffer))) > 0)
     {
-        char *code = codes[(unsigned char) m[arr_index]];
-        // For every letters
-        for (int i = 0, len = strlen(code); i < len; i++)
+        for (ssize_t i = 0; i < bytesRead; i++)
         {
-            // left shift
-            final <<= 1;
-
-            // Append if there is the number
-            if (code[i] == '1')
-                final |= 1;
-
-            fcount++;
-
-            // Reset both
-            if (fcount >= 8)
+            char *code = codes[buffer[i]];
+            for (int j = 0; code[j] != '\0'; j++)
             {
-                // write
-                fwrite(&final, 1, 1, f);
+                final <<= 1;
+                if (code[j] == '1') final |= 1;
+                fcount++;
 
-                // Reset count
-                fcount = 0;
-                
-                // reset final
-                final = 0;
-            }
-
-            if (i == (len - 1))
-            {
-                arr_index++;
+                if (fcount >= 8)
+                {
+                    fwrite(&final, 1, 1, f_out);
+                    fcount = 0;
+                    final = 0;
+                }
             }
         }
+        bytes_processed += bytesRead;
     }
 
-    // write remaining
-    if (fcount > 0)
-    {
-        printf("remaingings\n");
+    // Write remaining bitS
+    if (fcount > 0) {
         final <<= (8 - fcount);
-        fwrite(&final, 1, 1, f);
+        fwrite(&final, 1, 1, f_out);
     }
 
-    fclose(f);
+    fclose(f_out);
 }
 
 void build_codes(node *root, char *buffer, int depth, unsigned char **codes)

@@ -35,7 +35,7 @@ long long byte_count = 0;
 long long rep_length = 0;
 long after_meta = 0;
 
-int get_result(node *tree, unsigned char *payload, char *name, long long fsize);
+int get_result(node *tree, FILE *f, char *name);
 const char *get_filename_ext(const char *filename);
 void put_in_arr(list *l, int buffer, node **arr);
 void reverse_arr(node **arr, int len);
@@ -148,8 +148,6 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    fclose(f);
-
     // Now reopen the file in byte
     FILE *fb = fopen(argv[1], "rb");
 
@@ -161,17 +159,6 @@ int main(int argc, char **argv)
     fseek(fb, 0, SEEK_END);
     long long end = ftell(fb);
     fseek(fb, after_meta, SEEK_SET);
-
-    int fd = fileno(fb);
-    char *filedata = mmap(NULL, end, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (filedata == MAP_FAILED)
-    {
-        fclose(fb);
-        printf("Map failed for filedata\n");
-        return 1;
-    }
-
-    unsigned char *payload = (unsigned char *)(filedata + after_meta); // payload of [0] is the first byte after the metadata
 
     fclose(fb);
 
@@ -190,7 +177,7 @@ int main(int argc, char **argv)
         *ext = '\0'; // cut the string 
     }
 
-    int succ = get_result(tree, payload, final, (end - after_meta));
+    int succ = get_result(tree, f, final);
     if (succ == 1)
     {
         printf("error while writting to file\n");
@@ -198,10 +185,9 @@ int main(int argc, char **argv)
     }
 
     free(meta_arr);
+    fclose(f);
 
     free_tree(tree);
-    munmap(filedata, end);
-
     printf("Successfull\n");
 
     return 0;
@@ -241,44 +227,36 @@ const char *get_filename_ext(const char *filename)
     return dot + 1;
 }
 
-int get_result(node *tree, unsigned char *payload, char *name, long long fsize)
+int get_result(node *tree, FILE *f, char *name)
 {
     FILE *fw = fopen(name, "wb");
-    if (fw == NULL)
-    {
-        printf("Opening write file failed\n");
+    if (fw == NULL) 
         return 1;
-    }
 
     node *current = tree;
-
-    const int bytelen = 8;
+    unsigned char byte;
     long long byte_read = 0;
 
-    // For every nodes
-    for (long long i = 0; byte_read < rep_length && i < fsize; i++)
+    // Read the file one byte at a time until EOF
+    while (byte_read < rep_length && fread(&byte, 1, 1, f) == 1)
     {
-        // For every letters in the byte
-        for (int j = 0; j < bytelen; j++)
+        for (int j = 0; j < 8; j++)
         {
-            if (byte_read >= rep_length)
+            if (byte_read >= rep_length) 
                 break;
 
-            int bit = (payload[i] >> (7 - j)) & 1;
-
-            if (bit == 0)
+            int bit = (byte >> (7 - j)) & 1;
+            
+            if (bit == 0) 
                 current = current->left;
-
-            else if (bit == 1)
+            else 
                 current = current->right;
 
-            // if its a leaf or a 0 byte
             if (current->left == NULL && current->right == NULL)
             {
                 fwrite(&current->letter, 1, 1, fw);
-
                 byte_read++;
-                current = tree; // reset
+                current = tree; // Reset to root
             }
         }
     }
