@@ -7,4 +7,4 @@ tasks.json
 *.png
 *.bin
 *.iso
-test.txt
+*.huff
