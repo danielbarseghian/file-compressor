@@ -122,6 +122,12 @@ int main(int argc, char **argv)
 
     free_temp_list(temp_list);
 
+    for (int i = 0; i < node_count; i++)
+    {
+        byte_count += meta_arr[i]->repetition;
+        after_meta = ftell(f);
+    }
+
     // Reverse array
     reverse_arr(meta_arr, node_count);
     // Build the three

@@ -87,7 +87,7 @@ int main(int argc, char **argv)
         // Put in full repetition
         rep_length += rep;
 
-        // Malloc 
+        // Malloc
         list *temp = malloc(sizeof(list));
 
         // Put the values
@@ -103,6 +103,9 @@ int main(int argc, char **argv)
         // Put the next to the old head
         temp_list->next = tmp_pnt;
     }
+
+    // Calculate where the actual compressed data begins
+    after_meta = 4 + (node_count * 5);  // 4 bytes for node_count + 5 bytes per node (1 letter + 4 count)
 
     // I cant put directly here since i can't know the count before
     node **meta_arr = malloc(sizeof(node *) * node_count);
@@ -123,6 +126,12 @@ int main(int argc, char **argv)
     put_in_arr(temp_list, b, meta_arr);
 
     free_temp_list(temp_list);
+
+    for (int i = 0; i < node_count; i++)
+    {
+        byte_count += meta_arr[i]->repetition;
+        after_meta = ftell(f);
+    }
 
     // Reverse array
     reverse_arr(meta_arr, node_count);
