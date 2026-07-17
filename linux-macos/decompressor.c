@@ -175,7 +175,7 @@ int main(int argc, char **argv)
 
     fclose(fb);
 
-    char *final = malloc(sizeof(argv[1]));
+    char *final = malloc(strlen(argv[1]) + 1);
     if (final == NULL)
     {
         printf("malloc failed\n");
