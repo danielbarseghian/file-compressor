@@ -80,6 +80,8 @@ make decompressor
 
 ### 4. Usage
 
+You have to open the terminal in the same folder where the programs are
+
 #### Linux/macOS
 
 - **Compress**
