@@ -44,10 +44,17 @@ jobs:
           gcc -O2 -o ${{ matrix.suffix }}/compressor${{ matrix.ext }} ${{ matrix.src }}/compressor-win.c
           gcc -O2 -o ${{ matrix.suffix }}/decompressor${{ matrix.ext }} ${{ matrix.src }}/decompressor-win.c
 
-      - name: Zip platform folder
+      - name: Zip platform folder (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           zip -r ${{ matrix.suffix }}.zip ${{ matrix.suffix }}
+
+      - name: Zip platform folder (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ${{ matrix.suffix }} -DestinationPath ${{ matrix.suffix }}.zip
 
       - uses: actions/upload-artifact@v4
         with:
