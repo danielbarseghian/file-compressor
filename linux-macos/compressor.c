@@ -63,7 +63,6 @@ int main (int argc, char *argv[])
 
     long long fsize = buffer.st_size;
 
-    printf("size: %lli\n", fsize);
 
     if (fsize == 0)
     {
@@ -115,7 +114,6 @@ int main (int argc, char *argv[])
             put++;
         }
     }
-    printf("\n");
 
     // I need to sort node_arr
 
@@ -125,12 +123,6 @@ int main (int argc, char *argv[])
     {
         cpy_arr[i] = malloc(sizeof(node));
         *cpy_arr[i] = *node_arr[i];
-
-        for (int j = 7; j >= 0; j--)
-        {
-            printf("%d", (node_arr[i]->letter >> j) & 1);
-        }
-        printf(":%i||", node_arr[i]->repetition);
     }
     
     node *t = build_huffman(node_arr);
@@ -312,7 +304,6 @@ void write_file(unsigned char *m, unsigned char **codes, long long arr_size, cha
     // write remaining
     if (fcount > 0)
     {
-        printf("remaingings\n");
         final <<= (8 - fcount);
         fwrite(&final, 1, 1, f);
     }
