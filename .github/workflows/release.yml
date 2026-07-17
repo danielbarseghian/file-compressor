@@ -1,0 +1,52 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            suffix: linux-x86_64
+            ext: ""
+          - os: windows-latest
+            suffix: windows-x86_64
+            ext: ".exe"
+          - os: macos-latest
+            suffix: macos-arm64
+            ext: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          gcc -O2 -o compressor-${{ matrix.suffix }}${{ matrix.ext }} compressor.c
+          gcc -O2 -o decompressor-${{ matrix.suffix }}${{ matrix.ext }} decompressor.c
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          gcc -O2 -o compressor-${{ matrix.suffix }}${{ matrix.ext }} compressor.c
+          gcc -O2 -o decompressor-${{ matrix.suffix }}${{ matrix.ext }} decompressor.c
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.suffix }}
+          path: |
+            compressor-${{ matrix.suffix }}${{ matrix.ext }}
+            decompressor-${{ matrix.suffix }}${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '**/*'
