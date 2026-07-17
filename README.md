@@ -112,3 +112,5 @@ You have to open the terminal in the same folder where the programs are
 ## Issues
 
 If you encounter ANY issues, please report them in the [Issues](../../issues) tab.
+
+> VirusTotal flags the `.exe` as malicious (1/70) because it performs low-level memory operations. This is a false positive (you can even check out the code under windows/compressor-win.c and windows/decompressor-win.c)
