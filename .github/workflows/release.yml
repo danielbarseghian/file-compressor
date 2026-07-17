@@ -1,4 +1,5 @@
 name: Release
+
 on:
   push:
     tags: ['v*']
@@ -11,12 +12,15 @@ jobs:
           - os: ubuntu-latest
             suffix: linux-x86_64
             ext: ""
+            src: linux-macos
           - os: windows-latest
             suffix: windows-x86_64
             ext: ".exe"
+            src: windows
           - os: macos-latest
             suffix: macos-arm64
             ext: ""
+            src: linux-macos
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -24,15 +28,16 @@ jobs:
       - name: Build (Unix)
         if: runner.os != 'Windows'
         run: |
-          gcc -O2 -o compressor-${{ matrix.suffix }}${{ matrix.ext }} compressor.c
-          gcc -O2 -o decompressor-${{ matrix.suffix }}${{ matrix.ext }} decompressor.c
+          gcc -O2 -o compressor-${{ matrix.suffix }}${{ matrix.ext }} ${{ matrix.src }}/compressor.c
+          gcc -O2 -o decompressor-${{ matrix.suffix }}${{ matrix.ext }} ${{ matrix.src }}/decompressor.c
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          gcc -O2 -o compressor-${{ matrix.suffix }}${{ matrix.ext }} compressor.c
-          gcc -O2 -o decompressor-${{ matrix.suffix }}${{ matrix.ext }} decompressor.c
+          export PATH="/c/msys64/mingw64/bin:$PATH"
+          gcc -O2 -o compressor-${{ matrix.suffix }}${{ matrix.ext }} ${{ matrix.src }}/compressor-win.c
+          gcc -O2 -o decompressor-${{ matrix.suffix }}${{ matrix.ext }} ${{ matrix.src }}/decompressor-win.c
 
       - uses: actions/upload-artifact@v4
         with:
