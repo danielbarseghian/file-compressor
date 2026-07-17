@@ -31,30 +31,38 @@ jobs:
       - name: Build (Unix)
         if: runner.os != 'Windows'
         run: |
-          gcc -O2 -o compressor-${{ matrix.suffix }}${{ matrix.ext }} ${{ matrix.src }}/compressor.c
-          gcc -O2 -o decompressor-${{ matrix.suffix }}${{ matrix.ext }} ${{ matrix.src }}/decompressor.c
+          mkdir -p ${{ matrix.suffix }}
+          gcc -O2 -o ${{ matrix.suffix }}/compressor${{ matrix.ext }} ${{ matrix.src }}/compressor.c
+          gcc -O2 -o ${{ matrix.suffix }}/decompressor${{ matrix.ext }} ${{ matrix.src }}/decompressor.c
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
           export PATH="/c/msys64/mingw64/bin:$PATH"
-          gcc -O2 -o compressor-${{ matrix.suffix }}${{ matrix.ext }} ${{ matrix.src }}/compressor-win.c
-          gcc -O2 -o decompressor-${{ matrix.suffix }}${{ matrix.ext }} ${{ matrix.src }}/decompressor-win.c
+          mkdir -p ${{ matrix.suffix }}
+          gcc -O2 -o ${{ matrix.suffix }}/compressor${{ matrix.ext }} ${{ matrix.src }}/compressor-win.c
+          gcc -O2 -o ${{ matrix.suffix }}/decompressor${{ matrix.ext }} ${{ matrix.src }}/decompressor-win.c
+
+      - name: Zip platform folder
+        shell: bash
+        run: |
+          zip -r ${{ matrix.suffix }}.zip ${{ matrix.suffix }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.suffix }}
-          path: |
-            compressor-${{ matrix.suffix }}${{ matrix.ext }}
-            decompressor-${{ matrix.suffix }}${{ matrix.ext }}
+          path: ${{ matrix.suffix }}.zip
 
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: '**/*'
+          files: dist/*.zip
