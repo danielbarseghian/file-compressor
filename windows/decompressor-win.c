@@ -43,7 +43,6 @@ node *build_huffman(node **arr);
 void initialize_list(list *l);
 void free_list(list *first);
 void free_tree(node *t);
-void print_all(list *l);
 
 int main(int argc, char **argv)
 {
@@ -77,7 +76,6 @@ int main(int argc, char **argv)
 
     // First byte is always the length
     fread(&node_count, sizeof(uint32_t), 1, f);
-    printf("count: %" PRIu32 "\n", node_count);
 
     unsigned char letter;
     uint32_t rep = 0;
@@ -93,7 +91,6 @@ int main(int argc, char **argv)
         // Put the values
         temp->letter = letter;
         temp->repetition = rep;
-        printf("temp: %" PRIu32 "\n", rep);
 
         // Put temporary pnt to point to the front
         list *tmp_pnt = temp_list;
@@ -127,16 +124,6 @@ int main(int argc, char **argv)
 
     // Reverse array
     reverse_arr(meta_arr, node_count);
-    printf("%" PRIu32 "\n", node_count);
-
-    for (int i = 0; i < node_count; i++)
-    {
-        printf("%c:%i||", meta_arr[i]->letter, meta_arr[i]->repetition);
-        byte_count += meta_arr[i]->repetition;
-        after_meta = ftell(f);
-    }
-    printf("\n");
-
     // Build the three
     node *tree = build_huffman(meta_arr);
 
@@ -320,26 +307,6 @@ void reverse_arr(node **arr, int len)
         arr[len - 1 - i] = tmp; 
     }
 }
-
-void print_all(list *l)
-{
-    if (l == NULL)
-    {
-        return;
-    }
-
-    if (l->letter != '\0')
-    {
-        // Print metadata
-        printf("%c:%i||", l->letter, l->repetition);
-    }
-
-    if (l->next != NULL)
-    {
-        print_all(l->next);
-    }
-}
-
 /// Build a huffman tree and return the top element
 node *build_huffman(node **arr)
 {
