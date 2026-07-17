@@ -80,19 +80,32 @@ make decompressor
 
 ### 4. Usage
 
-- **Compress**
+#### Linux/macOS
 
+- **Compress**
   ```bash
-  ./compressor uncompressed out-name
+  ./compressor <input_file>
   ```
+  This creates `<input_file>.huff`.
 
 - **Decompress**
-
   ```bash
-  ./decompressor compressed out-name
+  ./decompressor <input_file>.huff
+  ```
+  This restores the original file.
+
+#### Windows
+
+- **Compress**
+  ```bash
+  compressor.exe <input_file>
+  ```
+- **Decompress**
+  ```bash
+  decompressor.exe <input_file>.huff
   ```
 
-> ⚠️ The input and output files must use the same file extension.
+> ⚠️ The decompressor expects files with the `.huff` extension (e.g., `image.jpg.huff`).
 
 ## Issues
 
