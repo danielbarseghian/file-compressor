@@ -168,9 +168,9 @@ int main (int argc, char *argv[])
     // Get the first file extension
     const char *first = get_filename_ext(argv[1]);
 
-    size_t size = strlen("output.") + strlen(first) + strlen(".huff") + 1; // i think its the third time i make this change.
+    size_t size = strlen("output.") + strlen(first) + strlen(".huff") + 1;
 
-    char *final_name = malloc(strlen(argv[1]) + 6); // +5 for .huff + \0
+    char *final_name = malloc(size);
 
     snprintf(final_name, size, "output.%s.huff", first);
 
