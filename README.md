@@ -80,7 +80,7 @@ make decompressor
 
 ### 4. Usage
 Use the compiled code or install from the [release](https://github.com/danielbarseghian/file-compressor/releases/tag/v1.0.0), then
-you will have to open the terminal in the same folder where the programs are
+you will have to open the terminal in the same folder where the programs are.
 
 #### Linux/macOS
 
